@@ -1,17 +1,58 @@
 #!/bin/zsh
-VERSION_LIST_PRE=$(cat /etc/os-release | grep snapshot | cut -c 12- > verinf && sed -i 's/"//g' verinf && cat verinf)
+VERSION_LIST_CURR=$(cat /etc/os-release | grep VARIANT_ID | cut -d '"' -f 2)
+CMD_HOLOISO_CHECK_FOR_UPDATES=$(pacman -Qu | grep holoiso-main)
+CMD_DB_UPDATE=$(sudo pacman -Sy | grep -o silent)
 
-if [[ "${DESKTOP_SESSION}" == "plasma" ]]; then
-        echo "HoloISO Updater Beta 1\nCurrent version: ${VERSION_LIST_PRE}\nChecking for updates..."
+# Update pacman DB before starting any update.
+${CMD_DB_UPDATE}
+
+# Check for available OS updates. Make sure to only check for snapshot updates
+updatecheck() {
+    if [ -n "${CMD_HOLOISO_CHECK_FOR_UPDATES}" ]; then
+        echo "Update available"
+        echo "${CMD_HOLOISO_CHECK_FOR_UPDATES}"
+        touch /tmp/steamos-updatepersist-sentinel
+        exit 0
+    else
+        echo "System up to date."
+        exit 7
+    fi
+}
+
+# Workaround for updates being absolute fucking pain in ass
+# Same idea as reboot sentinel above
+export STEAMOS_UPDATE_SENTINEL="/tmp/steamos-updatepersist-sentinel"
+if [[ -e "$STEAMOS_UPDATE_SENTINEL" ]]; then
+  rm -f "$STEAMOS_UPDATE_SENTINEL"
+    sudo pacman -Syyu --noconfirm --needed --ignore=linux-firmware --ignore=grub --ignore=linux --overwrite="*" --quiet;
+    sleep 1
+    rm /tmp/steamos-updatepersist-sentinel
+    sleep 1
+    touch /tmp/steamos-reboot-sentinel
 fi
 
-CMD_HOLO_UPDATE=$(sudo pacman -Syyu --noconfirm --needed --ignore=linux-firmware --ignore=grub --ignore=linux --quiet | grep nothing)
-VERSION_LIST=$(cat /etc/os-release | grep snapshot | cut -c 12- > verinf && sed -i 's/"//g' verinf && cat verinf)
 
-if [[ "${CMD_HOLO_UPDATE}" == " there is nothing to do" ]]; then
-    echo "Your system is up to date."
-    echo "Current version: ${VERSION_LIST_PRE}"
-    exit 7
-else
-    echo "Update complete to version ${VERSION_LIST}. Please restart your device to apply changes."
+# if [[ "${DESKTOP_SESSION}" == "plasma" ]]; then
+#        echo "HoloISO Updater Beta 1\nCurrent version: ${VERSION_LIST_PRE}\nChecking for updates..."
+#fi
+#CMD_HOLO_UPDATE=$(sudo pacman -Syyu --noconfirm --needed --ignore=linux-firmware --ignore=grub --ignore=linux --overwrite="*" --quiet | grep nothing)
+#VERSION_LIST=$(cat /etc/os-release | grep VARIANT_ID | cut -d '"' -f 2)
+#if [[ "${CMD_HOLO_UPDATE}" == " there is nothing to do" ]]; then
+#    echo "Your system is up to date."
+#    echo "Current version: ${VERSION_LIST_PRE}"
+#    exit 7
+#else
+#    echo "Update complete to version ${VERSION_LIST}. Please restart your device to apply changes."
+#fi
+
+if [ -n "$1" ]; then
+    case "$1" in
+    check)
+        updatecheck
+        ;;
+    '')
+        updatenow
+        ;;
+    esac
+    shift
 fi
