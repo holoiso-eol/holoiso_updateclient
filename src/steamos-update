@@ -1,7 +1,10 @@
 #!/bin/zsh
 VERSION_LIST_CURR=$(cat /etc/os-release | grep VARIANT_ID | cut -d '"' -f 2)
-CMD_HOLOISO_CHECK_FOR_UPDATES=$(pacman -Qu | grep holoiso-main)
 CMD_DB_UPDATE=$(sudo pacman -Sy | grep -o silent)
+CMD_HOLOISO_CHECK_FOR_UPDATES=$(pacman -Qu | grep -e holoiso-main -e holoiso-updateclient -e nvidia -e mesa -e vulkan -e linux)
+CMD_HOLOISO_CHECK_FOR_NVGPU_UPDATES=$(pacman -Qu | grep -e nvidia)
+CMD_HOLOISO_CHECK_FOR_KERNEL_UPDATES=$(pacman -Qu | grep -e linux)
+CMD_CHECK_BETA_BRANCH=$(cat /etc/holoiso-branch)
 
 # Update pacman DB before starting any update.
 ${CMD_DB_UPDATE}
@@ -9,7 +12,7 @@ ${CMD_DB_UPDATE}
 # Check for available OS updates. Make sure to only check for snapshot updates
 updatecheck() {
     if [ -n "${CMD_HOLOISO_CHECK_FOR_UPDATES}" ]; then
-        echo "Update available"
+        echo "Update(s) available:"
         echo "${CMD_HOLOISO_CHECK_FOR_UPDATES}"
         touch /tmp/steamos-updatepersist-sentinel
         exit 0
@@ -19,16 +22,41 @@ updatecheck() {
     fi
 }
 
-# Workaround for updates being absolute fucking pain in ass
-# Same idea as reboot sentinel above
+# Check for kernel updates. Little workaround to make it work on HoloISO
+checkkernelupd() {
+    if [ -n "${CMD_HOLOISO_CHECK_FOR_KERNEL_UPDATES}" ]; then
+        echo "Kernel update available, updating..."
+        sudo pacman -S --noconfirm --needed linux linux-neptune-dri
+        sudo depmod -a $(ls /lib/modules)
+        sudo mkinitcpio -P
+        sudo grub-mkconfig -o /boot/grub/grub.cfg
+    else
+        echo "Kernel update not required, skipping."
+    fi
+}
+
+checkgpuupd() {
+    if [ -n "${CMD_HOLOISO_CHECK_FOR_NVGPU_UPDATES}" ]; then
+        echo "NVIDIA GPU Driver update available, updating..."
+        sudo pacman -S --noconfirm --needed nvidia-dkms opencl-nvidia nvidia-utils
+        sudo depmod -a $(ls /lib/modules)
+        sudo mkinitcpio -P
+        sudo grub-mkconfig -o /boot/grub/grub.cfg
+    else
+        echo "NVIDIA GPU Driver not detected or not required, skipping."
+    fi
+}
+
+# Check for sentinel. Sentinel detected = Update time!
 export STEAMOS_UPDATE_SENTINEL="/tmp/steamos-updatepersist-sentinel"
 if [[ -e "$STEAMOS_UPDATE_SENTINEL" ]]; then
   rm -f "$STEAMOS_UPDATE_SENTINEL"
-    sudo pacman -Syyu --noconfirm --needed --ignore=linux-firmware --ignore=grub --ignore=linux --overwrite="*" --quiet;
-    sleep 1
-    rm /tmp/steamos-updatepersist-sentinel
-    sleep 1
-    touch /tmp/steamos-reboot-sentinel
+    sudo pacman -Sy --noconfirm --needed holoiso-main;
+    checkkernelupd
+    checkgpuupd
+    echo "HoloISO Update complete, checking OS updates..."
+    sudo pacman -Syyu --noconfirm --needed --ignore=grub
+    echo "Update complete. Restart your device to finish."
 fi
 
 
