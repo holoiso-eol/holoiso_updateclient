@@ -26,7 +26,7 @@ updatecheck() {
 checkkernelupd() {
     if [ -n "${CMD_HOLOISO_CHECK_FOR_KERNEL_UPDATES}" ]; then
         echo "Kernel update available, updating..."
-        sudo pacman -S --noconfirm --needed linux linux-neptune-dri
+        sudo pacman -S --noconfirm --needed linux linux-headers linux-neptune-dri linux-neptune-dri-headers
         sudo depmod -a $(ls /lib/modules)
         sudo mkinitcpio -P
         sudo grub-mkconfig -o /boot/grub/grub.cfg
