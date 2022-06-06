@@ -4,6 +4,7 @@ CMD_DB_UPDATE=$(sudo pacman -Sy | grep -o silent)
 CMD_HOLOISO_CHECK_FOR_UPDATES=$(pacman -Qu | grep -e holoiso-main -e holoiso-updateclient -e nvidia -e mesa -e vulkan -e linux)
 CMD_HOLOISO_CHECK_FOR_NVGPU_UPDATES=$(pacman -Qu | grep -e nvidia)
 CMD_HOLOISO_CHECK_FOR_KERNEL_UPDATES=$(pacman -Qu | grep -e linux)
+IS_NVIDIA=$(echo $(lspci | grep VGA | cut -d ':' -f 3) | grep NVIDIA)
 CMD_CHECK_BETA_BRANCH=$(cat /etc/holoiso-branch)
 
 # Update pacman DB before starting any update.
@@ -26,7 +27,7 @@ updatecheck() {
 checkkernelupd() {
     if [ -n "${CMD_HOLOISO_CHECK_FOR_KERNEL_UPDATES}" ]; then
         echo "Kernel update available, updating..."
-        sudo pacman -S --noconfirm --needed linux linux-headers linux-neptune-dri linux-neptune-dri-headers
+        sudo pacman -S --noconfirm --needed linux-holoiso linux-holoiso-headers linux-neptune-dri linux-neptune-dri-headers
         sudo depmod -a $(ls /lib/modules)
         sudo mkinitcpio -P
         sudo grub-mkconfig -o /boot/grub/grub.cfg
@@ -35,7 +36,9 @@ checkkernelupd() {
     fi
 }
 
+# We do not want to overwrite GPU drivers by old Syyu command, update GPU drivers as if it would be a regular package installation
 checkgpuupd() {
+if [ -n "${IS_NVIDIA}" ]; then
     if [ -n "${CMD_HOLOISO_CHECK_FOR_NVGPU_UPDATES}" ]; then
         echo "NVIDIA GPU Driver update available, updating..."
         sudo pacman -S --noconfirm --needed nvidia-dkms opencl-nvidia nvidia-utils
@@ -43,8 +46,11 @@ checkgpuupd() {
         sudo mkinitcpio -P
         sudo grub-mkconfig -o /boot/grub/grub.cfg
     else
-        echo "NVIDIA GPU Driver not detected or not required, skipping."
+        echo "NVIDIA GPU Driver update not required, skipping."
     fi
+else
+    echo "No NVIDIA GPU, skipping update."
+fi
 }
 
 # Check for sentinel. Sentinel detected = Update time!
@@ -55,7 +61,7 @@ if [[ -e "$STEAMOS_UPDATE_SENTINEL" ]]; then
     checkkernelupd
     checkgpuupd
     echo "HoloISO Update complete, checking OS updates..."
-    sudo pacman -Syyu --noconfirm --needed --ignore=grub
+    sudo pacman -Syyu --noconfirm --needed --ignore=grub --ignore=linux
     sudo depmod -a $(ls /lib/modules)
     sudo mkinitcpio -P
     sudo grub-mkconfig -o /boot/grub/grub.cfg
