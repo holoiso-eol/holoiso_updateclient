@@ -27,6 +27,7 @@ updatecheck() {
 checkkernelupd() {
     if [ -n "${CMD_HOLOISO_CHECK_FOR_KERNEL_UPDATES}" ]; then
         echo "Kernel update available, updating..."
+        sudo pacman -Rcns linux linux-headers
         sudo pacman -S --noconfirm --needed linux-holoiso linux-holoiso-headers linux-neptune-dri linux-neptune-dri-headers
         sudo depmod -a $(ls /lib/modules)
         sudo mkinitcpio -P
@@ -41,7 +42,7 @@ checkgpuupd() {
 if [ -n "${IS_NVIDIA}" ]; then
     if [ -n "${CMD_HOLOISO_CHECK_FOR_NVGPU_UPDATES}" ]; then
         echo "NVIDIA GPU Driver update available, updating..."
-        sudo pacman -S --noconfirm --needed nvidia-dkms opencl-nvidia nvidia-utils
+        sudo pacman -S --noconfirm --needed nvidia-dkms opencl-nvidia nvidia-utils lib32-nvidia-utils
         sudo depmod -a $(ls /lib/modules)
         sudo mkinitcpio -P
         sudo grub-mkconfig -o /boot/grub/grub.cfg
