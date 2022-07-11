@@ -1,14 +1,16 @@
 #!/bin/zsh
 VERSION_LIST_CURR=$(cat /etc/os-release | grep VARIANT_ID | cut -d '"' -f 2)
 CMD_DB_UPDATE=$(sudo pacman -Sy | grep -o silent)
+
+# Update pacman DB before starting any update.
+${CMD_DB_UPDATE}
+sleep 1
+# Define update variables only after DB update, to make sure queries are going to be made properly.
 CMD_HOLOISO_CHECK_FOR_UPDATES=$(pacman -Qu | grep -e holoiso-main -e holoiso-updateclient -e nvidia -e mesa -e vulkan -e linux)
 CMD_HOLOISO_CHECK_FOR_NVGPU_UPDATES=$(pacman -Qu | grep -e nvidia)
 CMD_HOLOISO_CHECK_FOR_KERNEL_UPDATES=$(pacman -Qu | grep -e linux)
 IS_NVIDIA=$(echo $(lspci | grep VGA | cut -d ':' -f 3) | grep NVIDIA)
 CMD_CHECK_BETA_BRANCH=$(cat /etc/holoiso-branch)
-
-# Update pacman DB before starting any update.
-${CMD_DB_UPDATE}
 
 # Check for available OS updates. Make sure to only check for snapshot updates
 updatecheck() {
