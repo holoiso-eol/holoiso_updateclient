@@ -6,9 +6,11 @@ CMD_DB_UPDATE=$(sudo pacman -Sy | grep -o silent)
 ${CMD_DB_UPDATE}
 sleep 1
 # Define update variables only after DB update, to make sure queries are going to be made properly.
-CMD_HOLOISO_CHECK_FOR_UPDATES=$(pacman -Qu | grep -e holoiso-main -e holoiso-updateclient -e nvidia -e mesa -e vulkan -e linux)
+CMD_HOLOISO_CHECK_FOR_UPDATES=$(pacman -Qu | grep -e holoiso-main -e holoiso-updateclient -e nvidia -e mesa -e vulkan -e linux-holoiso -e linux-neptune)
 CMD_HOLOISO_CHECK_FOR_NVGPU_UPDATES=$(pacman -Qu | grep -e nvidia)
-CMD_HOLOISO_CHECK_FOR_KERNEL_UPDATES=$(pacman -Qu | grep -e linux)
+CMD_HOLOISO_CHECK_FOR_KERNEL_UPDATES=$(pacman -Qu | grep -e linux-holoiso -e linux-neptune)
+CMD_HOLOISO_CHECK_FOR_MESA_UPDATES_AMD=$(pacman -Qu | grep -e vulkan-radeon -e lib32-vulkan-radeon)
+CMD_HOLOISO_CHECK_FOR_MESA_UPDATES_INTEL=$(pacman -Qu | grep -e vulkan-intel -e lib32-vulkan-intel)
 IS_NVIDIA=$(echo $(lspci | grep VGA | cut -d ':' -f 3) | grep NVIDIA)
 CMD_CHECK_BETA_BRANCH=$(cat /etc/holoiso-branch)
 
@@ -29,8 +31,8 @@ updatecheck() {
 checkkernelupd() {
     if [ -n "${CMD_HOLOISO_CHECK_FOR_KERNEL_UPDATES}" ]; then
         echo "Kernel update available, updating..."
-        sudo pacman -Rcns linux linux-headers
-        sudo pacman -S --noconfirm --needed linux-holoiso linux-holoiso-headers linux-neptune-dri linux-neptune-dri-headers
+        sudo pacman -Rcns linux linux-headers linux-neptune-dri linux-neptune-dri-headers
+        sudo pacman -S --noconfirm --needed --disable-download-timeout linux-holoiso linux-holoiso-headers linux-neptune linux-neptune-headers
         sudo depmod -a $(ls /lib/modules)
         sudo mkinitcpio -P
         sudo grub-mkconfig -o /boot/grub/grub.cfg
@@ -39,12 +41,30 @@ checkkernelupd() {
     fi
 }
 
+# Check for MESA and vulkan updates.
+checkmesaupd() {
+    # Check AMD updates first
+    if [ -n "${CMD_HOLOISO_CHECK_FOR_MESA_UPDATES_AMD}" ]; then
+        echo "AMD MESA and Vulkan update available, updating..."
+        sudo pacman -S --noconfirm --needed --disable-download-timeout holoiso/mesa holoiso/lib32-mesa holoiso/vulkan-radeon holoiso/lib32-vulkan-radeon
+    else
+        echo "AMD MESA update not required or not detected, trying to update Intel MESA"
+    fi
+    # Check Intel updates afterwards if not required.
+    if [ -n "${CMD_HOLOISO_CHECK_FOR_MESA_UPDATES_INTEL}" ]; then
+        echo "Intel MESA and Vulkan update available, updating..."
+        sudo pacman -S --noconfirm --needed --disable-download-timeout holoiso/mesa holoiso/lib32-mesa holoiso/vulkan-intel holoiso/lib32-vulkan-intel
+    else
+        echo "Intel MESA update not required or not detected, MESA update not required, skipping entirely"
+    fi
+}
+
 # We do not want to overwrite GPU drivers by old Syyu command, update GPU drivers as if it would be a regular package installation
 checkgpuupd() {
 if [ -n "${IS_NVIDIA}" ]; then
     if [ -n "${CMD_HOLOISO_CHECK_FOR_NVGPU_UPDATES}" ]; then
         echo "NVIDIA GPU Driver update available, updating..."
-        sudo pacman -S --noconfirm --needed nvidia-dkms opencl-nvidia nvidia-utils lib32-nvidia-utils
+        sudo pacman -S --noconfirm --needed --disable-download-timeout nvidia-dkms opencl-nvidia nvidia-utils lib32-nvidia-utils
         sudo depmod -a $(ls /lib/modules)
         sudo mkinitcpio -P
         sudo grub-mkconfig -o /boot/grub/grub.cfg
@@ -60,11 +80,12 @@ fi
 export STEAMOS_UPDATE_SENTINEL="/tmp/steamos-updatepersist-sentinel"
 if [[ -e "$STEAMOS_UPDATE_SENTINEL" ]]; then
   rm -f "$STEAMOS_UPDATE_SENTINEL"
-    sudo pacman -Sy --noconfirm --needed holoiso-main;
+    sudo pacman -Sy --noconfirm --needed --disable-download-timeout holoiso-main;
     checkkernelupd
     checkgpuupd
+    checkmesaupd
     echo "HoloISO Update complete, checking OS updates..."
-    sudo pacman -Syyu --noconfirm --needed --ignore=grub --ignore=linux
+    sudo pacman -Syyu --noconfirm --needed --disable-download-timeout --ignore=grub --ignore=linux
     sudo depmod -a $(ls /lib/modules)
     sudo mkinitcpio -P
     sudo grub-mkconfig -o /boot/grub/grub.cfg
