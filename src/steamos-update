@@ -41,7 +41,8 @@ updatecheck() {
 checkkernelupd() {
     # Force get rid of linux-neptune-dri
     if [ -n "${CMD_HOLOISO_DEPRECATE_NEPTUNE}" ]; then
-        sudo pacman -Rcns linux linux-headers linux-neptune-dri linux-neptune-dri-headers
+        sudo pacman -Rcns --noconfirm linux linux-headers linux-neptune-dri linux-neptune-dri-headers
+        check_download $? "removing linux-neptune-dri"
         sudo pacman -S --noconfirm --needed --disable-download-timeout linux-holoiso linux-holoiso-headers linux-neptune linux-neptune-headers
         check_download $? "installing neptune-dri replacement"
         sudo depmod -a $(ls /lib/modules)
