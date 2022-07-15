@@ -1,4 +1,5 @@
 #!/bin/zsh
+UPD_APP_MANIFEST=$(curl -s http://dl.thevakhovske.pw/manifest/updateapps.txt)
 VERSION_LIST_CURR=$(cat /etc/os-release | grep VARIANT_ID | cut -d '"' -f 2)
 CMD_DB_UPDATE=$(sudo pacman -Sy | grep -o silent)
 
@@ -11,6 +12,7 @@ CMD_HOLOISO_CHECK_FOR_NVGPU_UPDATES=$(pacman -Qu | grep -e nvidia)
 CMD_HOLOISO_CHECK_FOR_KERNEL_UPDATES=$(pacman -Qu | grep -e linux-holoiso -e linux-neptune)
 CMD_HOLOISO_CHECK_FOR_MESA_UPDATES_AMD=$(pacman -Qu | grep -e vulkan-radeon -e lib32-vulkan-radeon)
 CMD_HOLOISO_CHECK_FOR_MESA_UPDATES_INTEL=$(pacman -Qu | grep -e vulkan-intel -e lib32-vulkan-intel)
+CMD_HOLOISO_DEPRECATE_NEPTUNE=$(pacman -Q | grep -e linux-neptune-dri)
 IS_NVIDIA=$(echo $(lspci | grep VGA | cut -d ':' -f 3) | grep NVIDIA)
 CMD_CHECK_BETA_BRANCH=$(cat /etc/holoiso-branch)
 
@@ -29,15 +31,34 @@ updatecheck() {
 
 # Check for kernel updates. Little workaround to make it work on HoloISO
 checkkernelupd() {
+    # Force get rid of linux-neptune-dri
+    if [ -n "${CMD_HOLOISO_DEPRECATE_NEPTUNE}" ]; then
+        sudo pacman -Rcns linux linux-headers linux-neptune-dri linux-neptune-dri-headers
+        sudo pacman -S --noconfirm --needed --disable-download-timeout linux-holoiso linux-holoiso-headers linux-neptune linux-neptune-headers
+        sudo depmod -a $(ls /lib/modules)
+        sudo mkinitcpio -P
+        sudo grub-mkconfig -o /boot/grub/grub.cfg
+    fi
+    # Check for kernel updates
     if [ -n "${CMD_HOLOISO_CHECK_FOR_KERNEL_UPDATES}" ]; then
         echo "Kernel update available, updating..."
-        sudo pacman -Rcns linux linux-headers linux-neptune-dri linux-neptune-dri-headers
         sudo pacman -S --noconfirm --needed --disable-download-timeout linux-holoiso linux-holoiso-headers linux-neptune linux-neptune-headers
         sudo depmod -a $(ls /lib/modules)
         sudo mkinitcpio -P
         sudo grub-mkconfig -o /boot/grub/grub.cfg
     else
         echo "Kernel update not required, skipping."
+    fi
+}
+
+# Check for manifest related stuff
+checkaddmanifest() {
+    if [ -n "${UPD_APP_MANIFEST}" ]; then
+        echo "Reinstalling all apps in HoloISO Update manifest"
+        sudo pacman -S --noconfirm --needed --disable-download-timeout ${UPD_APP_MANIFEST}
+        sudo depmod -a $(ls /lib/modules)
+        sudo mkinitcpio -P
+        sudo grub-mkconfig -o /boot/grub/grub.cfg
     fi
 }
 
@@ -84,6 +105,7 @@ if [[ -e "$STEAMOS_UPDATE_SENTINEL" ]]; then
     checkkernelupd
     checkgpuupd
     checkmesaupd
+    checkaddmanifest
     echo "HoloISO Update complete, checking OS updates..."
     sudo pacman -Syyu --noconfirm --needed --disable-download-timeout --ignore=grub --ignore=linux
     sudo depmod -a $(ls /lib/modules)
