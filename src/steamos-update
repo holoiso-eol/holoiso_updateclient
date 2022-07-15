@@ -16,6 +16,14 @@ CMD_HOLOISO_DEPRECATE_NEPTUNE=$(pacman -Q | grep -e linux-neptune-dri)
 IS_NVIDIA=$(echo $(lspci | grep VGA | cut -d ':' -f 3) | grep NVIDIA)
 CMD_CHECK_BETA_BRANCH=$(cat /etc/holoiso-branch)
 
+check_download(){
+	if [ $1 != 0 ]; then
+		echo "\nError: Something went wrong when $2.\nPlease make sure you have a stable internet connection!\n"
+        sudo rm /tmp/steamos-updatepersist-sentinel
+		exit 1
+	fi
+}
+
 # Check for available OS updates. Make sure to only check for snapshot updates
 updatecheck() {
     if [ -n "${CMD_HOLOISO_CHECK_FOR_UPDATES}" ]; then
@@ -35,6 +43,7 @@ checkkernelupd() {
     if [ -n "${CMD_HOLOISO_DEPRECATE_NEPTUNE}" ]; then
         sudo pacman -Rcns linux linux-headers linux-neptune-dri linux-neptune-dri-headers
         sudo pacman -S --noconfirm --needed --disable-download-timeout linux-holoiso linux-holoiso-headers linux-neptune linux-neptune-headers
+        check_download $? "installing neptune-dri replacement"
         sudo depmod -a $(ls /lib/modules)
         sudo mkinitcpio -P
         sudo grub-mkconfig -o /boot/grub/grub.cfg
@@ -43,6 +52,7 @@ checkkernelupd() {
     if [ -n "${CMD_HOLOISO_CHECK_FOR_KERNEL_UPDATES}" ]; then
         echo "Kernel update available, updating..."
         sudo pacman -S --noconfirm --needed --disable-download-timeout linux-holoiso linux-holoiso-headers linux-neptune linux-neptune-headers
+        check_download $? "installing kernel updates"
         sudo depmod -a $(ls /lib/modules)
         sudo mkinitcpio -P
         sudo grub-mkconfig -o /boot/grub/grub.cfg
@@ -56,6 +66,7 @@ checkaddmanifest() {
     if [ -n "${UPD_APP_MANIFEST}" ]; then
         echo "Reinstalling all apps in HoloISO Update manifest"
         sudo pacman -S --noconfirm --needed --disable-download-timeout ${UPD_APP_MANIFEST}
+        check_download $? "installing manifest applications"
         sudo depmod -a $(ls /lib/modules)
         sudo mkinitcpio -P
         sudo grub-mkconfig -o /boot/grub/grub.cfg
@@ -68,6 +79,7 @@ checkmesaupd() {
     if [ -n "${CMD_HOLOISO_CHECK_FOR_MESA_UPDATES_AMD}" ]; then
         echo "AMD MESA and Vulkan update available, updating..."
         sudo pacman -S --noconfirm --needed --disable-download-timeout holoiso/mesa holoiso/lib32-mesa holoiso/vulkan-radeon holoiso/lib32-vulkan-radeon
+        check_download $? "installing mesa updates"
     else
         echo "AMD MESA update not required or not detected, trying to update Intel MESA"
     fi
@@ -75,6 +87,7 @@ checkmesaupd() {
     if [ -n "${CMD_HOLOISO_CHECK_FOR_MESA_UPDATES_INTEL}" ]; then
         echo "Intel MESA and Vulkan update available, updating..."
         sudo pacman -S --noconfirm --needed --disable-download-timeout holoiso/mesa holoiso/lib32-mesa holoiso/vulkan-intel holoiso/lib32-vulkan-intel
+        check_download $? "installing mesa updates"
     else
         echo "Intel MESA update not required or not detected, MESA update not required, skipping entirely"
     fi
@@ -86,6 +99,7 @@ if [ -n "${IS_NVIDIA}" ]; then
     if [ -n "${CMD_HOLOISO_CHECK_FOR_NVGPU_UPDATES}" ]; then
         echo "NVIDIA GPU Driver update available, updating..."
         sudo pacman -S --noconfirm --needed --disable-download-timeout nvidia-dkms opencl-nvidia nvidia-utils lib32-nvidia-utils
+        check_download $? "installing nvidia updates"
         sudo depmod -a $(ls /lib/modules)
         sudo mkinitcpio -P
         sudo grub-mkconfig -o /boot/grub/grub.cfg
@@ -102,12 +116,14 @@ export STEAMOS_UPDATE_SENTINEL="/tmp/steamos-updatepersist-sentinel"
 if [[ -e "$STEAMOS_UPDATE_SENTINEL" ]]; then
   rm -f "$STEAMOS_UPDATE_SENTINEL"
     sudo pacman -Sy --noconfirm --needed --disable-download-timeout holoiso-main;
+    check_download $? "installing holoiso snapshot"
     checkkernelupd
     checkgpuupd
     checkmesaupd
     checkaddmanifest
     echo "HoloISO Update complete, checking OS updates..."
     sudo pacman -Syyu --noconfirm --needed --disable-download-timeout --ignore=grub --ignore=linux
+    check_download $? "installing OS updates"
     sudo depmod -a $(ls /lib/modules)
     sudo mkinitcpio -P
     sudo grub-mkconfig -o /boot/grub/grub.cfg
