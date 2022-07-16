@@ -42,7 +42,8 @@ checkkernelupd() {
     # Force get rid of linux-neptune-dri
     if [ -n "${CMD_HOLOISO_DEPRECATE_NEPTUNE}" ]; then
         sudo pacman -Rcns --noconfirm linux linux-headers linux-neptune-dri linux-neptune-dri-headers
-        check_download $? "removing linux-neptune-dri"
+	echo "deprecated forever."
+	sleep 1
         sudo pacman -S --noconfirm --needed --disable-download-timeout linux-holoiso linux-holoiso-headers linux-neptune linux-neptune-headers
         check_download $? "installing neptune-dri replacement"
         sudo depmod -a $(ls /lib/modules)
@@ -118,10 +119,12 @@ if [[ -e "$STEAMOS_UPDATE_SENTINEL" ]]; then
   rm -f "$STEAMOS_UPDATE_SENTINEL"
     sudo pacman -Sy --noconfirm --needed --overwrite="*" --disable-download-timeout holoiso-main;
     check_download $? "installing holoiso snapshot"
+    sleep 1
     checkkernelupd
     checkgpuupd
     checkmesaupd
     checkaddmanifest
+    sleep 1
     echo "HoloISO Update complete, checking OS updates..."
     sudo pacman -Syyu --noconfirm --needed --disable-download-timeout --ignore=grub --ignore=linux
     check_download $? "installing OS updates"
