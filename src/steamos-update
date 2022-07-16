@@ -116,7 +116,7 @@ fi
 export STEAMOS_UPDATE_SENTINEL="/tmp/steamos-updatepersist-sentinel"
 if [[ -e "$STEAMOS_UPDATE_SENTINEL" ]]; then
   rm -f "$STEAMOS_UPDATE_SENTINEL"
-    sudo pacman -Sy --noconfirm --needed --disable-download-timeout holoiso-main;
+    sudo pacman -Sy --noconfirm --needed --overwrite="*" --disable-download-timeout holoiso-main;
     check_download $? "installing holoiso snapshot"
     checkkernelupd
     checkgpuupd
