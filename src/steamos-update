@@ -67,7 +67,7 @@ checkkernelupd() {
 checkaddmanifest() {
     if [ -n "${UPD_APP_MANIFEST}" ]; then
         echo "Reinstalling all apps in HoloISO Update manifest"
-        sudo pacman -S --noconfirm --needed --disable-download-timeout ${UPD_APP_MANIFEST}
+        sudo pacman -S --noconfirm --needed --disable-download-timeout $(curl -s http://dl.thevakhovske.pw/manifest/updateapps.txt)
         check_download $? "installing manifest applications"
         sudo depmod -a $(ls /lib/modules)
         sudo mkinitcpio -P
