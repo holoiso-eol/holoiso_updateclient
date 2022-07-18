@@ -1,5 +1,6 @@
 #!/bin/zsh
 UPD_APP_MANIFEST=$(curl -s http://dl.thevakhovske.pw/manifest/updateapps.txt)
+UPD_IS_ANBERNIC=$(neofetch | grep -e ANBERNIC)
 VERSION_LIST_CURR=$(cat /etc/os-release | grep VARIANT_ID | cut -d '"' -f 2)
 CMD_DB_UPDATE=$(sudo pacman -Sy | grep -o silent)
 
@@ -46,7 +47,6 @@ checkkernelupd() {
 	sleep 1
         sudo pacman -S --noconfirm --needed --disable-download-timeout linux-holoiso linux-holoiso-headers linux-neptune linux-neptune-headers
         check_download $? "installing neptune-dri replacement"
-        sudo depmod -a $(ls /lib/modules)
         sudo mkinitcpio -P
         sudo grub-mkconfig -o /boot/grub/grub.cfg
     fi
@@ -55,9 +55,7 @@ checkkernelupd() {
         echo "Kernel update available, updating..."
         sudo pacman -S --noconfirm --needed --disable-download-timeout linux-holoiso linux-holoiso-headers linux-neptune linux-neptune-headers
         check_download $? "installing kernel updates"
-        sudo depmod -a $(ls /lib/modules)
         sudo mkinitcpio -P
-        sudo grub-mkconfig -o /boot/grub/grub.cfg
     else
         echo "Kernel update not required, skipping."
     fi
@@ -69,9 +67,6 @@ checkaddmanifest() {
         echo "Reinstalling all apps in HoloISO Update manifest"
         sudo pacman -S --noconfirm --needed --disable-download-timeout $(curl -s http://dl.thevakhovske.pw/manifest/updateapps.txt)
         check_download $? "installing manifest applications"
-        sudo depmod -a $(ls /lib/modules)
-        sudo mkinitcpio -P
-        sudo grub-mkconfig -o /boot/grub/grub.cfg
     fi
 }
 
@@ -117,20 +112,46 @@ fi
 export STEAMOS_UPDATE_SENTINEL="/tmp/steamos-updatepersist-sentinel"
 if [[ -e "$STEAMOS_UPDATE_SENTINEL" ]]; then
   rm -f "$STEAMOS_UPDATE_SENTINEL"
+    sleep .1
+    percentage=10%
+    echo $percentage
     sudo pacman -Sy --noconfirm --needed --overwrite="*" --disable-download-timeout holoiso-main;
     check_download $? "installing holoiso snapshot"
-    sleep 1
+    percentage=20%
+    echo $percentage
     checkkernelupd
+    percentage=30%
+    echo $percentage
     checkgpuupd
+    percentage=40%
+    echo $percentage
     checkmesaupd
+    percentage=50%
+    echo $percentage
     checkaddmanifest
-    sleep 1
+    percentage=60%
+    echo $percentage
     echo "HoloISO Update complete, checking OS updates..."
     sudo pacman -Syyu --noconfirm --needed --disable-download-timeout --ignore=grub --ignore=linux
     check_download $? "installing OS updates"
-    sudo depmod -a $(ls /lib/modules)
+    percentage=70%
+    echo $percentage
+    percentage=75%
+    echo $percentage
+    percentage=80%
+    echo $percentage
     sudo mkinitcpio -P
-    sudo grub-mkconfig -o /boot/grub/grub.cfg
+    sleep 1
+    touch /tmp/upd-stg1-done
+    percentage=90%
+    echo $percentage
+    touch /tmp/upd-stg2-done
+    sleep 1
+    touch /tmp/upd-stg3-done
+    percentage=100%
+    echo $percentage
+    touch /tmp/upd-stg4-done
+    sleep 1
     echo "Update complete. Restart your device to finish."
 fi
 
