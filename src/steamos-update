@@ -1,6 +1,5 @@
 #!/bin/zsh
 UPD_APP_MANIFEST=$(curl -s http://dl.thevakhovske.pw/manifest/updateapps.txt)
-UPD_IS_ANBERNIC=$(neofetch | grep -e ANBERNIC)
 VERSION_LIST_CURR=$(cat /etc/os-release | grep VARIANT_ID | cut -d '"' -f 2)
 CMD_DB_UPDATE=$(sudo pacman -Sy | grep -o silent)
 
@@ -63,11 +62,7 @@ checkkernelupd() {
 
 # Check for manifest related stuff
 checkaddmanifest() {
-    if [ -n "${UPD_APP_MANIFEST}" ]; then
-        echo "Reinstalling all apps in HoloISO Update manifest"
-        sudo pacman -S --noconfirm --needed --disable-download-timeout $(curl -s http://dl.thevakhovske.pw/manifest/updateapps.txt)
-        check_download $? "installing manifest applications"
-    fi
+    sudo holoiso-manifest-updater
 }
 
 # Check for MESA and vulkan updates.

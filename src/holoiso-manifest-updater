@@ -1,0 +1,47 @@
+#!/bin/zsh
+# HoloISO manifest tracker or idk
+
+UPD_IS_WIN600=$(cat /sys/devices/virtual/dmi/id/product_name | grep Win600)
+
+# Check if controller update is installed
+if [ -n "${UPD_IS_WIN600}" ]; then
+    IS_CONTROLLER_INSTALLED=$(pacman -Q | grep win600-xpad-dkms)
+    if [ -n "${IS_CONTROLLER_INSTALLED}" ]; then
+        sudo pacman -Sy
+        IS_CONTROLLER_REQ_TO_UPD=$(pacman -Qu | grep win600-xpad-dkms)
+            if [ -n "${IS_CONTROLLER_REQ_TO_UPD}" ]; then
+                sudo pacman -S holoiso/win600-xpad-dkms
+            else
+                echo "Controller drivers are up to date."
+            fi
+    else
+        echo "Device is Win600. But controller drivers are missing."
+        sudo pacman -S holoiso/win600-xpad-dkms
+    fi
+else
+    echo "Controller driver is not required and device isn't Anbernic Win600. Skipping"
+fi
+
+# Remove other unrequired apps
+REMOVED_APPS_RESIDE=$(pacman -Q | grep -e $(curl -s https://raw.githubusercontent.com/theVakhovskeIsTaken/holoiso-manifests/main/delete.txt | sed 's/ / -e /g'))
+if [ -n "${REMOVED_APPS_RESIDE}" ]; then
+    sudo pacman -Rdd --noconfirm $(curl -s https://raw.githubusercontent.com/theVakhovskeIsTaken/holoiso-manifests/main/delete.txt)
+else
+    echo "No need for removing apps now."
+fi
+
+# Install manifest apps
+REQ_INSTALLED_APPS=$(pacman -Q | grep -e $(curl -s https://raw.githubusercontent.com/theVakhovskeIsTaken/holoiso-manifests/main/install | sed 's/ / -e /g'))
+if [ -n "${REQ_INSTALLED_APPS}" ]; then
+    echo "Apps are installed. Checking for updates."
+    REQ_INSTALLED_APPS_UPDATE=$(pacman -Qu | grep -e $(curl -s https://raw.githubusercontent.com/theVakhovskeIsTaken/holoiso-manifests/main/install | sed 's/ / -e /g'))
+    if [ -n "${REQ_INSTALLED_APPS_UPDATE}" ]; then
+        sudo pacman -S --noconfirm --disable-download-timeout $(curl -s https://raw.githubusercontent.com/theVakhovskeIsTaken/holoiso-manifests/main/install)
+        echo "Manifest update complete. Done"
+    else
+        echo "Manifest apps up to date."
+    fi
+else
+    echo "Installing manifest apps..."
+    sudo pacman -S --noconfirm --disable-download-timeout $(curl -s https://raw.githubusercontent.com/theVakhovskeIsTaken/holoiso-manifests/main/install)
+fi
