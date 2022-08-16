@@ -10,7 +10,7 @@ sleep 1
 CMD_HOLOISO_CHECK_FOR_UPDATES=$(pacman -Qu | grep -e holoiso-main -e holoiso-updateclient -e nvidia -e mesa -e vulkan -e linux-holoiso -e linux-neptune)
 CMD_HOLOISO_CHECK_FOR_NVGPU_UPDATES=$(pacman -Qu | grep -e nvidia)
 CMD_HOLOISO_CHECK_FOR_KERNEL_UPDATES=$(pacman -Qu | grep -e linux-holoiso -e linux-neptune)
-CMD_HOLOISO_CHECK_FOR_MESA_UPDATES_AMD=$(pacman -Qu | grep -e vulkan-radeon -e lib32-vulkan-radeon)
+CMD_HOLOISO_CHECK_FOR_MESA_UPDATES_AMD=$(pacman -Qu | grep -e vulkan-radeon -e lib32-vulkan-radeon -e gamescope)
 CMD_HOLOISO_CHECK_FOR_MESA_UPDATES_INTEL=$(pacman -Qu | grep -e vulkan-intel -e lib32-vulkan-intel)
 CMD_HOLOISO_DEPRECATE_NEPTUNE=$(pacman -Q | grep -e linux-neptune-dri)
 IS_NVIDIA=$(echo $(lspci | grep VGA | cut -d ':' -f 3) | grep NVIDIA)
@@ -70,7 +70,7 @@ checkmesaupd() {
     # Check AMD updates first
     if [ -n "${CMD_HOLOISO_CHECK_FOR_MESA_UPDATES_AMD}" ]; then
         echo "AMD MESA and Vulkan update available, updating..."
-        sudo pacman -S --noconfirm --needed --disable-download-timeout holoiso/mesa holoiso/lib32-mesa holoiso/vulkan-radeon holoiso/lib32-vulkan-radeon
+        sudo pacman -S --noconfirm --needed --disable-download-timeout holoiso/mesa holoiso/lib32-mesa holoiso/vulkan-radeon holoiso/lib32-vulkan-radeon holoiso/gamescope
         check_download $? "installing mesa updates"
     else
         echo "AMD MESA update not required or not detected, trying to update Intel MESA"
