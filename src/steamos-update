@@ -7,12 +7,13 @@ CMD_DB_UPDATE=$(sudo pacman -Sy | grep -o silent)
 ${CMD_DB_UPDATE}
 sleep 1
 # Define update variables only after DB update, to make sure queries are going to be made properly.
-CMD_HOLOISO_CHECK_FOR_UPDATES=$(pacman -Qu | grep -e holoiso-main -e holoiso-updateclient -e nvidia -e mesa -e vulkan -e linux-holoiso -e linux-neptune)
+CMD_HOLOISO_CHECK_FOR_UPDATES=$(pacman -Qu | grep -e holoiso-main -e win600 -e holoiso-updateclient -e nvidia -e mesa -e vulkan -e linux-holoiso -e linux-neptune)
 CMD_HOLOISO_CHECK_FOR_NVGPU_UPDATES=$(pacman -Qu | grep -e nvidia)
 CMD_HOLOISO_CHECK_FOR_KERNEL_UPDATES=$(pacman -Qu | grep -e linux-holoiso -e linux-neptune)
 CMD_HOLOISO_CHECK_FOR_MESA_UPDATES_AMD=$(pacman -Qu | grep -e vulkan-radeon -e lib32-vulkan-radeon -e gamescope)
 CMD_HOLOISO_CHECK_FOR_MESA_UPDATES_INTEL=$(pacman -Qu | grep -e vulkan-intel -e lib32-vulkan-intel)
 CMD_HOLOISO_DEPRECATE_NEPTUNE=$(pacman -Q | grep -e linux-neptune-dri)
+CMD_HOLOISO_CHECK_WIN600_XPAD=$(pacman -Qu | grep -e win600)
 IS_NVIDIA=$(echo $(lspci | grep VGA | cut -d ':' -f 3) | grep NVIDIA)
 CMD_CHECK_BETA_BRANCH=$(cat /etc/holoiso-branch)
 
@@ -29,6 +30,18 @@ updatecheck() {
     if [ -n "${CMD_HOLOISO_CHECK_FOR_UPDATES}" ]; then
         echo "Update(s) available:"
         echo "${CMD_HOLOISO_CHECK_FOR_UPDATES}"
+        touch /tmp/steamos-updatepersist-sentinel
+        exit 0
+    elif [ -n "${CMD_HOLOISO_CHECK_FOR_MESA_UPDATES_AMD}" ] || [ -n "${CMD_HOLOISO_CHECK_FOR_NVGPU_UPDATES}" ] || [ -n "${CMD_HOLOISO_CHECK_FOR_MESA_UPDATES_INTEL}" ]; then
+    	echo " GPU driver update(s) available:"
+        echo "${CMD_HOLOISO_CHECK_FOR_MESA_UPDATES_AMD}"
+	echo "${CMD_HOLOISO_CHECK_FOR_MESA_UPDATES_INTEL}"
+	echo "${CMD_HOLOISO_CHECK_FOR_NVGPU_UPDATES}"
+        touch /tmp/steamos-updatepersist-sentinel
+        exit 0
+    elif [ -n "${CMD_HOLOISO_CHECK_WIN600_XPAD}" ]; then
+    	echo " Anbernic Win600 gamepad driver update available"
+        echo "${CMD_HOLOISO_CHECK_WIN600_XPAD}"
         touch /tmp/steamos-updatepersist-sentinel
         exit 0
     else
@@ -127,7 +140,7 @@ if [[ -e "$STEAMOS_UPDATE_SENTINEL" ]]; then
     percentage=60%
     echo $percentage
     echo "HoloISO Update complete, checking OS updates..."
-    sudo pacman -Syyu --noconfirm --needed --disable-download-timeout --ignore=grub --ignore=linux
+    sudo pacman -Syu --noconfirm --needed --disable-download-timeout --ignore=grub --ignore=linux
     check_download $? "installing OS updates"
     percentage=70%
     echo $percentage
