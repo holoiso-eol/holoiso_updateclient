@@ -13,6 +13,7 @@ CMD_HOLOISO_CHECK_FOR_KERNEL_UPDATES=$(pacman -Qu | grep -e linux-holoiso -e lin
 CMD_HOLOISO_CHECK_FOR_MESA_UPDATES_AMD=$(pacman -Qu | grep -e vulkan-radeon -e lib32-vulkan-radeon -e gamescope)
 CMD_HOLOISO_CHECK_FOR_MESA_UPDATES_INTEL=$(pacman -Qu | grep -e vulkan-intel -e lib32-vulkan-intel)
 CMD_HOLOISO_DEPRECATE_NEPTUNE=$(pacman -Q | grep -e linux-neptune-dri)
+CMD_HOLOISO_CHECK_GRUB_UPDATES=$(pacman -Qu | grep -e grub)
 CMD_HOLOISO_CHECK_WIN600_XPAD=$(pacman -Qu | grep -e win600)
 IS_NVIDIA=$(echo $(lspci | grep VGA | cut -d ':' -f 3) | grep NVIDIA)
 CMD_CHECK_BETA_BRANCH=$(cat /etc/holoiso-branch)
@@ -35,13 +36,23 @@ updatecheck() {
     elif [ -n "${CMD_HOLOISO_CHECK_FOR_MESA_UPDATES_AMD}" ] || [ -n "${CMD_HOLOISO_CHECK_FOR_NVGPU_UPDATES}" ] || [ -n "${CMD_HOLOISO_CHECK_FOR_MESA_UPDATES_INTEL}" ]; then
     	echo " GPU driver update(s) available:"
         echo "${CMD_HOLOISO_CHECK_FOR_MESA_UPDATES_AMD}"
-	echo "${CMD_HOLOISO_CHECK_FOR_MESA_UPDATES_INTEL}"
-	echo "${CMD_HOLOISO_CHECK_FOR_NVGPU_UPDATES}"
+	    echo "${CMD_HOLOISO_CHECK_FOR_MESA_UPDATES_INTEL}"
+	    echo "${CMD_HOLOISO_CHECK_FOR_NVGPU_UPDATES}"
         touch /tmp/steamos-updatepersist-sentinel
         exit 0
     elif [ -n "${CMD_HOLOISO_CHECK_WIN600_XPAD}" ]; then
-    	echo " Anbernic Win600 gamepad driver update available"
+    	echo " Anbernic Win600 gamepad driver update available:"
         echo "${CMD_HOLOISO_CHECK_WIN600_XPAD}"
+        touch /tmp/steamos-updatepersist-sentinel
+        exit 0
+    elif [ -n "${CMD_HOLOISO_CHECK_FOR_KERNEL_UPDATES}" ]; then
+    	echo " Kernel update(s) available:"
+        echo "${CMD_HOLOISO_CHECK_FOR_KERNEL_UPDATES}"
+        touch /tmp/steamos-updatepersist-sentinel
+        exit 0
+    elif [ -n "${CMD_HOLOISO_CHECK_GRUB_UPDATES}" ]; then
+    	echo " Bootloader update available:"
+        echo "${CMD_HOLOISO_CHECK_GRUB_UPDATES}"
         touch /tmp/steamos-updatepersist-sentinel
         exit 0
     else
@@ -66,6 +77,9 @@ checkkernelupd() {
     if [ -n "${CMD_HOLOISO_CHECK_FOR_KERNEL_UPDATES}" ]; then
         echo "Kernel update available, updating..."
         sudo pacman -S --noconfirm --needed --disable-download-timeout linux-holoiso linux-holoiso-headers linux-neptune linux-neptune-headers
+        if [ "$(cat /sys/devices/virtual/dmi/id/product_name)" == "Win600" ]; then
+            sudo pacman -S --noconfirm --needed --disable-download-timeout win600-xpad-dkms
+        fi
         check_download $? "installing kernel updates"
         sudo mkinitcpio -P
     else
@@ -76,6 +90,17 @@ checkkernelupd() {
 # Check for manifest related stuff
 checkaddmanifest() {
     sudo holoiso-manifest-updater
+}
+
+# Check for GRUB updates.
+checkgrubupd() {
+    if [ -n "${CMD_HOLOISO_CHECK_GRUB_UPDATES}" ]; then
+        echo "GRUB update available, updating..."
+        sudo pacman -S --noconfirm --needed --disable-download-timeout holoiso/grub
+        sudo holoiso-grub-update
+    else
+        echo "GRUB up-to-date"
+    fi
 }
 
 # Check for MESA and vulkan updates.
@@ -153,7 +178,7 @@ if [[ -e "$STEAMOS_UPDATE_SENTINEL" ]]; then
     touch /tmp/upd-stg1-done
     percentage=90%
     echo $percentage
-    touch /tmp/upd-stg2-done
+    checkgrubupd
     sleep 1
     touch /tmp/upd-stg3-done
     percentage=100%
