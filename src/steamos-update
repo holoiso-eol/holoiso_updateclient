@@ -97,6 +97,12 @@ checkgrubupd() {
     if [ -n "${CMD_HOLOISO_CHECK_GRUB_UPDATES}" ]; then
         echo "GRUB update available, updating..."
         sudo pacman -S --noconfirm --needed --disable-download-timeout holoiso/grub
+	GRUB_THEME_INSTALLED=$(pacman -Q | grep -e breeze-grub)
+		if [ -n "${GRUB_THEME_INSTALLED}" ]; then
+			echo "Theme is available. No need for reinstall."
+		else
+			sudo pacman -S --noconfirm --needed --disable-download-timeout breeze-grub
+		fi
         sudo holoiso-grub-update
     else
         echo "GRUB up-to-date"
