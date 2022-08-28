@@ -7,11 +7,11 @@ CMD_DB_UPDATE=$(sudo pacman -Sy | grep -o silent)
 ${CMD_DB_UPDATE}
 sleep 1
 # Define update variables only after DB update, to make sure queries are going to be made properly.
-CMD_HOLOISO_CHECK_FOR_UPDATES=$(pacman -Qu | grep -e holoiso-main -e win600 -e holoiso-updateclient -e nvidia -e mesa -e vulkan -e linux-holoiso -e linux-neptune)
+CMD_HOLOISO_CHECK_FOR_UPDATES=$(pacman -Qu | grep -e holoiso-main -e win600 -e gamescope -e holoiso-updateclient -e nvidia -e mesa -e vulkan -e linux-holoiso -e linux-neptune)
 CMD_HOLOISO_CHECK_FOR_NVGPU_UPDATES=$(pacman -Qu | grep -e nvidia)
 CMD_IS_SNAPSHOT_UPDATE=$(pacman -Qu | grep -e holoiso-main)
 CMD_HOLOISO_CHECK_FOR_KERNEL_UPDATES=$(pacman -Qu | grep -e linux-holoiso -e linux-neptune)
-CMD_HOLOISO_CHECK_FOR_MESA_UPDATES_AMD=$(pacman -Qu | grep -e vulkan-radeon -e lib32-vulkan-radeon -e gamescope)
+CMD_HOLOISO_CHECK_FOR_MESA_UPDATES_AMD=$(pacman -Qu | grep -e vulkan-radeon -e lib32-vulkan-radeon)
 CMD_HOLOISO_CHECK_FOR_MESA_UPDATES_INTEL=$(pacman -Qu | grep -e vulkan-intel -e lib32-vulkan-intel)
 CMD_HOLOISO_DEPRECATE_NEPTUNE=$(pacman -Q | grep -e linux-neptune-dri)
 CMD_HOLOISO_CHECK_GRUB_UPDATES=$(pacman -Qu | grep -e grub)
@@ -78,9 +78,6 @@ checkkernelupd() {
     if [ -n "${CMD_HOLOISO_CHECK_FOR_KERNEL_UPDATES}" ]; then
         echo "Kernel update available, updating..."
         sudo pacman -S --noconfirm --needed --disable-download-timeout linux-holoiso linux-holoiso-headers linux-neptune linux-neptune-headers
-        if [ "$(cat /sys/devices/virtual/dmi/id/product_name)" == "Win600" ]; then
-            sudo pacman -S --noconfirm --needed --disable-download-timeout win600-xpad-dkms
-        fi
         check_download $? "installing kernel updates"
     else
         echo "Kernel update not required, skipping."
@@ -115,7 +112,7 @@ checkosupd() {
     if [ -n "${CMD_IS_SNAPSHOT_UPDATE}" ]; then
         echo "Snapshot update is available"
         sudo pacman -S --noconfirm --needed --disable-download-timeout holoiso-main
-	sudo pacman -S --noconfirm --needed --disable-download-timeout $(pacman -Si holoiso-main | grep Depends | cut -d ':' -f 2 | sed 's/jupiter-hw-support//g;s/gamescope//g')
+	sudo pacman -S --noconfirm --needed --disable-download-timeout $(pacman -Si holoiso-main | grep Depends | cut -d ':' -f 2 | sed 's/jupiter-hw-support//g')
         sudo holoiso-grub-update
     else
         echo "OS snapshot up to date"
@@ -135,7 +132,7 @@ checkmesaupd() {
     # Check Intel updates afterwards if not required.
     if [ -n "${CMD_HOLOISO_CHECK_FOR_MESA_UPDATES_INTEL}" ]; then
         echo "Intel MESA and Vulkan update available, updating..."
-        sudo pacman -S --noconfirm --needed --disable-download-timeout holoiso/mesa holoiso/lib32-mesa holoiso/vulkan-intel holoiso/lib32-vulkan-intel
+        sudo pacman -S --noconfirm --needed --disable-download-timeout holoiso/mesa holoiso/lib32-mesa holoiso/vulkan-intel holoiso/lib32-vulkan-intel holoiso-gamescope
         check_download $? "installing mesa updates"
     else
         echo "Intel MESA update not required or not detected, MESA update not required, skipping entirely"
@@ -192,7 +189,8 @@ if [[ -e "$STEAMOS_UPDATE_SENTINEL" ]]; then
     echo $percentage
     percentage=80%
     echo $percentage
-    sudo mkinitcpio -P
+    touch /tmp/u-still-here-huh
+    holoiso-manifest-updater
     sleep 1
     touch /tmp/upd-stg1-done
     percentage=90%
