@@ -10,13 +10,13 @@ if [ -n "${UPD_IS_WIN600}" ]; then
         sudo pacman -Sy
         IS_CONTROLLER_REQ_TO_UPD=$(pacman -Qu | grep win600-xpad-dkms)
             if [ -n "${IS_CONTROLLER_REQ_TO_UPD}" ]; then
-                sudo pacman -S holoiso/win600-xpad-dkms
+                sudo pacman -S --noconfirm --disable-download-timeout holoiso/win600-xpad-dkms
             else
                 echo "Controller drivers are up to date."
             fi
     else
         echo "Device is Win600. But controller drivers are missing."
-        sudo pacman -S holoiso/win600-xpad-dkms
+        sudo pacman -S --noconfirm --disable-download-timeout holoiso/win600-xpad-dkms
     fi
 else
     echo "Controller driver is not required and device isn't Anbernic Win600. Skipping"
