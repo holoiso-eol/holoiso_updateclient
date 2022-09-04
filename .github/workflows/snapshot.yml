@@ -25,12 +25,12 @@ jobs:
           
       - name: Add to arch repository
         run: |
-          su -s /bin/bash nobody -c "wget http://dl.thevakhovske.pw/pacman/holostaging/os/x86_64/holostaging.db -P pkgout"
-          su -s /bin/bash nobody -c "wget http://dl.thevakhovske.pw/pacman/holostaging/os/x86_64/holostaging.db.tar.gz -P pkgout"
-          su -s /bin/bash nobody -c "wget http://dl.thevakhovske.pw/pacman/holostaging/os/x86_64/holostaging.db.tar.gz.old -P pkgout"
-          su -s /bin/bash nobody -c "wget http://dl.thevakhovske.pw/pacman/holostaging/os/x86_64/holostaging.files -P pkgout"
-          su -s /bin/bash nobody -c "wget http://dl.thevakhovske.pw/pacman/holostaging/os/x86_64/holostaging.files.tar.gz -P pkgout"
-          su -s /bin/bash nobody -c "wget http://dl.thevakhovske.pw/pacman/holostaging/os/x86_64/holostaging.files.tar.gz.old -P pkgout"
+          su -s /bin/bash nobody -c "wget http://dlcdn2.thevakhovske.pw/holostaging/os/x86_64/holostaging.db -P pkgout"
+          su -s /bin/bash nobody -c "wget http://dlcdn2.thevakhovske.pw/holostaging/os/x86_64/holostaging.db.tar.gz -P pkgout"
+          su -s /bin/bash nobody -c "wget http://dlcdn2.thevakhovske.pw/holostaging/os/x86_64/holostaging.db.tar.gz.old -P pkgout"
+          su -s /bin/bash nobody -c "wget http://dlcdn2.thevakhovske.pw/holostaging/os/x86_64/holostaging.files -P pkgout"
+          su -s /bin/bash nobody -c "wget http://dlcdn2.thevakhovske.pw/holostaging/os/x86_64/holostaging.files.tar.gz -P pkgout"
+          su -s /bin/bash nobody -c "wget http://dlcdn2.thevakhovske.pw/holostaging/os/x86_64/holostaging.files.tar.gz.old -P pkgout"
           su -s /bin/bash nobody -c "repo-add pkgout/holostaging.db.tar.gz pkgout/*.tar.zst"
 
       - uses: actions/upload-artifact@v2

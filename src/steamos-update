@@ -124,7 +124,7 @@ checkmesaupd() {
     # Check AMD updates first
     if [ -n "${CMD_HOLOISO_CHECK_FOR_MESA_UPDATES_AMD}" ]; then
         echo "AMD MESA and Vulkan update available, updating..."
-        sudo pacman -S --noconfirm --needed --disable-download-timeout holoiso/mesa holoiso/lib32-mesa holoiso/vulkan-radeon holoiso/lib32-vulkan-radeon holoiso/gamescope
+        sudo pacman -S --noconfirm --needed --disable-download-timeout mesa lib32-mesa vulkan-radeon lib32-vulkan-radeon holoiso/gamescope
         check_download $? "installing mesa updates"
     else
         echo "AMD MESA update not required or not detected, trying to update Intel MESA"
@@ -132,7 +132,7 @@ checkmesaupd() {
     # Check Intel updates afterwards if not required.
     if [ -n "${CMD_HOLOISO_CHECK_FOR_MESA_UPDATES_INTEL}" ]; then
         echo "Intel MESA and Vulkan update available, updating..."
-        sudo pacman -S --noconfirm --needed --disable-download-timeout holoiso/mesa holoiso/lib32-mesa holoiso/vulkan-intel holoiso/lib32-vulkan-intel holoiso-gamescope
+        sudo pacman -S --noconfirm --needed --disable-download-timeout mesa lib32-mesa holoiso/vulkan-intel holoiso/lib32-vulkan-intel holoiso/gamescope
         check_download $? "installing mesa updates"
     else
         echo "Intel MESA update not required or not detected, MESA update not required, skipping entirely"
