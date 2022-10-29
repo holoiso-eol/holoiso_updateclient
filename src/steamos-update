@@ -194,6 +194,7 @@ if [[ -e "$STEAMOS_UPDATE_SENTINEL" ]]; then
 		sudo pacman -S --noconfirm archlinux-keyring
 		sudo pacman -S --noconfirm icu lib32-icu freerdp ffmpeg harfbuzz-icu libphonenumber raptor chromaprint
 		sudo pacman -Syu --noconfirm --needed --disable-download-timeout --ignore=grub --ignore=linux
+		sudo pacman -S mesa lib32-mesa vulkan-radeon vulkan-intel lib32-vulkan-radeon lib32-vulkan-intel
 		check_download $? "installing OS updates"
     fi
     percentage=70%
