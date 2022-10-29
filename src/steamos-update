@@ -1,4 +1,5 @@
 #!/bin/zsh
+
 UPD_APP_MANIFEST=$(curl -s http://dl.thevakhovske.pw/manifest/updateapps.txt)
 VERSION_LIST_CURR=$(cat /etc/os-release | grep VARIANT_ID | cut -d '"' -f 2)
 CMD_DB_UPDATE=$(sudo pacman -Sy | grep -o silent)
@@ -16,6 +17,7 @@ CMD_HOLOISO_CHECK_FOR_MESA_UPDATES_INTEL=$(pacman -Qu | grep -e vulkan-intel -e 
 CMD_HOLOISO_DEPRECATE_NEPTUNE=$(pacman -Q | grep -e linux-holoiso)
 CMD_HOLOISO_CHECK_GRUB_UPDATES=$(pacman -Qu | grep -e grub)
 CMD_HOLOISO_CHECK_WIN600_XPAD=$(pacman -Qu | grep -e win600)
+IS_LARGE_UPDATE=$(pacman -Qqu | wc -l)
 IS_NVIDIA=$(echo $(lspci | grep VGA | cut -d ':' -f 3) | grep NVIDIA)
 CMD_CHECK_BETA_BRANCH=$(cat /etc/holoiso-branch)
 
@@ -32,6 +34,11 @@ updatecheck() {
     if [ -n "${CMD_HOLOISO_CHECK_FOR_UPDATES}" ]; then
         echo "Update(s) available:"
         echo "$(pacman -Si holoiso-main | grep Description | cut -d ":" -f 2)"
+		if [ "${IS_LARGE_UPDATE}" -ge "100" ]; then
+			echo " | "
+			touch /tmp/large_arch_upd
+			echo "${IS_LARGE_UPDATE} packages ready for update. Arch Linux base update detected"
+		fi
         touch /tmp/steamos-updatepersist-sentinel
         exit 0
     elif [ -n "${CMD_HOLOISO_CHECK_FOR_MESA_UPDATES_AMD}" ] || [ -n "${CMD_HOLOISO_CHECK_FOR_NVGPU_UPDATES}" ] || [ -n "${CMD_HOLOISO_CHECK_FOR_MESA_UPDATES_INTEL}" ]; then
@@ -114,6 +121,7 @@ checkosupd() {
         sudo pacman -S --noconfirm --needed --disable-download-timeout holoiso-main
 	sudo pacman -S --noconfirm --needed --disable-download-timeout $(pacman -Si holoiso-main | grep Depends | cut -d ':' -f 2 | sed 's/jupiter-hw-support//g')
         sudo holoiso-grub-update
+	sudo pacman -Sy
     else
         echo "OS snapshot up to date"
     fi
@@ -159,6 +167,7 @@ fi
 
 # Check for sentinel. Sentinel detected = Update time!
 export STEAMOS_UPDATE_SENTINEL="/tmp/steamos-updatepersist-sentinel"
+export LARGE_UPD_DETECTED="/tmp/large_arch_upd"
 if [[ -e "$STEAMOS_UPDATE_SENTINEL" ]]; then
   rm -f "$STEAMOS_UPDATE_SENTINEL"
     sleep .1
@@ -181,8 +190,12 @@ if [[ -e "$STEAMOS_UPDATE_SENTINEL" ]]; then
     percentage=60%
     echo $percentage
     echo "HoloISO Update complete, checking OS updates..."
-    sudo pacman -Syu --noconfirm --needed --disable-download-timeout --ignore=grub --ignore=linux
-    check_download $? "installing OS updates"
+    if [[ -e "$LARGE_UPD_DETECTED" ]]; then
+		sudo pacman -S --noconfirm archlinux-keyring
+		sudo pacman -S --noconfirm icu lib32-icu freerdp ffmpeg harfbuzz-icu libphonenumber raptor chromaprint
+		sudo pacman -Syu --noconfirm --needed --disable-download-timeout --ignore=grub --ignore=linux
+		check_download $? "installing OS updates"
+    fi
     percentage=70%
     echo $percentage
     percentage=75%
