@@ -14,7 +14,7 @@ CMD_IS_SNAPSHOT_UPDATE=$(pacman -Qu | grep -e holoiso-main)
 CMD_HOLOISO_CHECK_FOR_KERNEL_UPDATES=$(pacman -Qu | grep -e linux-holoiso -e linux-neptune)
 CMD_HOLOISO_CHECK_FOR_MESA_UPDATES_AMD=$(pacman -Qu | grep -e vulkan-radeon -e lib32-vulkan-radeon)
 CMD_HOLOISO_CHECK_FOR_MESA_UPDATES_INTEL=$(pacman -Qu | grep -e vulkan-intel -e lib32-vulkan-intel)
-CMD_HOLOISO_DEPRECATE_NEPTUNE=$(pacman -Q | grep -e linux-holoiso)
+CMD_HOLOISO_DEPRECATE_NEPTUNE=$(pacman -Q | grep -e linux-neptune-dri)
 CMD_HOLOISO_CHECK_GRUB_UPDATES=$(pacman -Qu | grep -e grub)
 CMD_HOLOISO_CHECK_WIN600_XPAD=$(pacman -Qu | grep -e win600)
 IS_LARGE_UPDATE=$(pacman -Qqu | wc -l)
@@ -73,10 +73,10 @@ updatecheck() {
 checkkernelupd() {
     # Force get rid of linux-neptune-dri
     if [ -n "${CMD_HOLOISO_DEPRECATE_NEPTUNE}" ]; then
-        sudo pacman -Rcns --noconfirm linux-holoiso linux-holoiso-headers
+        sudo pacman -Rcns --noconfirm linux-neptune-dri linux-neptune-dri-headers
 	echo "deprecated forever."
 	sleep 1
-        sudo pacman -S --noconfirm --needed --disable-download-timeout core-main/linux core-main/linux-headers linux-neptune linux-neptune-headers
+        sudo pacman -S --noconfirm --needed --disable-download-timeout linux-holoiso linux-holoiso-headers linux-neptune linux-neptune-headers
         check_download $? "installing neptune-dri replacement"
         sudo mkinitcpio -P
         sudo grub-mkconfig -o /boot/grub/grub.cfg
@@ -84,7 +84,7 @@ checkkernelupd() {
     # Check for kernel updates
     if [ -n "${CMD_HOLOISO_CHECK_FOR_KERNEL_UPDATES}" ]; then
         echo "Kernel update available, updating..."
-        sudo pacman -S --noconfirm --needed --disable-download-timeout core-main/linux core-main/linux-headers linux-neptune linux-neptune-headers
+        sudo pacman -S --noconfirm --needed --disable-download-timeout linux-holoiso linux-holoiso-headers linux-neptune linux-neptune-headers
         check_download $? "installing kernel updates"
     else
         echo "Kernel update not required, skipping."
@@ -100,8 +100,8 @@ checkaddmanifest() {
 checkgrubupd() {
     if [ -n "${CMD_HOLOISO_CHECK_GRUB_UPDATES}" ]; then
         echo "GRUB update available, updating..."
-        sudo pacman -S --noconfirm --needed --disable-download-timeout holoiso/grub
-	sudo pacman -S --noconfirm --needed --disable-download-timeout $(pacman -Si holoiso/grub | grep Depends | cut -d ':' -f 2)
+        sudo pacman -S --noconfirm --needed --disable-download-timeout ${UPD_BRANCH_OS}/grub
+	sudo pacman -S --noconfirm --needed --disable-download-timeout $(pacman -Si ${UPD_BRANCH_OS}/grub | grep Depends | cut -d ':' -f 2)
 	GRUB_THEME_INSTALLED=$(pacman -Q | grep -e breeze-grub)
 		if [ -n "${GRUB_THEME_INSTALLED}" ]; then
 			echo "Theme is available. No need for reinstall."
@@ -132,7 +132,7 @@ checkmesaupd() {
     # Check AMD updates first
     if [ -n "${CMD_HOLOISO_CHECK_FOR_MESA_UPDATES_AMD}" ]; then
         echo "AMD MESA and Vulkan update available, updating..."
-        sudo pacman -S --noconfirm --needed --disable-download-timeout mesa lib32-mesa vulkan-radeon lib32-vulkan-radeon holoiso/gamescope
+        sudo pacman -S --noconfirm --needed --disable-download-timeout mesa lib32-mesa vulkan-radeon lib32-vulkan-radeon ${UPD_BRANCH_OS}/gamescope
         check_download $? "installing mesa updates"
     else
         echo "AMD MESA update not required or not detected, trying to update Intel MESA"
@@ -140,7 +140,7 @@ checkmesaupd() {
     # Check Intel updates afterwards if not required.
     if [ -n "${CMD_HOLOISO_CHECK_FOR_MESA_UPDATES_INTEL}" ]; then
         echo "Intel MESA and Vulkan update available, updating..."
-        sudo pacman -S --noconfirm --needed --disable-download-timeout mesa lib32-mesa holoiso/vulkan-intel holoiso/lib32-vulkan-intel holoiso/gamescope
+        sudo pacman -S --noconfirm --needed --disable-download-timeout mesa lib32-mesa ${UPD_BRANCH_OS}/vulkan-intel ${UPD_BRANCH_OS}/lib32-vulkan-intel ${UPD_BRANCH_OS}/gamescope
         check_download $? "installing mesa updates"
     else
         echo "Intel MESA update not required or not detected, MESA update not required, skipping entirely"
@@ -152,7 +152,7 @@ checkgpuupd() {
 if [ -n "${IS_NVIDIA}" ]; then
     if [ -n "${CMD_HOLOISO_CHECK_FOR_NVGPU_UPDATES}" ]; then
         echo "NVIDIA GPU Driver update available, updating..."
-        sudo pacman -S --noconfirm --needed --disable-download-timeout nvidia-dkms opencl-nvidia nvidia-utils lib32-nvidia-utils
+        sudo pacman -S --noconfirm --needed --disable-download-timeout ${UPD_BRANCH_OS}/nvidia-dkms ${UPD_BRANCH_OS}/opencl-nvidia ${UPD_BRANCH_OS}/nvidia-utils ${UPD_BRANCH_OS}/lib32-nvidia-utils
         check_download $? "installing nvidia updates"
         sudo depmod -a $(ls /lib/modules)
         sudo mkinitcpio -P
@@ -176,6 +176,26 @@ if [[ -e "$STEAMOS_UPDATE_SENTINEL" ]]; then
     checkosupd
     check_download $? "installing holoiso snapshot"
     percentage=20%
+    ### SO, here's the fix for all of the goddamn issues i might have when we merge back to holoiso
+    ### Basically, i ship pacman.conf each time this fucking shitty package gets updated
+    ### And i can check it everytime it updates to make sure it updates the real shit!
+    IS_BETA=$(cat /etc/pacman.conf | grep -e "jupiter-main")
+    if [ -n "${IS_BETA}" ]; then
+        echo "holy shit dude touch grass your system is broken and if you fixed it you probably didn't come outside for last 10 years"
+	    UPD_BRANCH_JUPITER="jupiter-main"
+	    UPD_BRANCH_OS_CORE="holo-main"
+	    UPD_BRANCH_ARCH_CORE="core-main"
+	    UPD_BRANCH_ARCH_EXTRA="extra-main"
+	    UPD_BRANCH_ARCH_MULTILIB="multilib-main"
+	    UPD_BRANCH_OS="holoiso"
+    else
+	    UPD_BRANCH_JUPITER="jupiter"
+	    UPD_BRANCH_OS_CORE="holo"
+	    UPD_BRANCH_ARCH_CORE="core"
+	    UPD_BRANCH_ARCH_EXTRA="extra"
+	    UPD_BRANCH_ARCH_MULTILIB="multilib"
+	    UPD_BRANCH_OS="holoiso-stable"
+    fi
     echo $percentage
     checkkernelupd
     percentage=30%
