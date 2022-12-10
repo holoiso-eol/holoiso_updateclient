@@ -6,7 +6,6 @@ fi
 
 if [ -f "/etc/holoiso-oobe" ]; then
 	echo "Fresh installation, ignoring"
-	sudo rm /etc/holoiso-oobe
 	exit 7
 fi
 
@@ -256,7 +255,6 @@ if [ -n "$1" ]; then
     check)
     	if [ -f "/etc/holoiso-oobe" ]; then
 		echo "Fresh installation, ignoring"
-		sudo rm /etc/holoiso-oobe
 		exit 7
 	else	
 		general
@@ -266,7 +264,6 @@ if [ -n "$1" ]; then
     '')
 	if [ -f "/etc/holoiso-oobe" ]; then
 		echo "Fresh installation, ignoring"
-		sudo rm /etc/holoiso-oobe
 		exit 7
 	else	
 		general
