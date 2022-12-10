@@ -198,7 +198,7 @@ if [[ -e "$STEAMOS_UPDATE_SENTINEL" ]]; then
 	    UPD_BRANCH_ARCH_CORE="core-main"
 	    UPD_BRANCH_ARCH_EXTRA="extra-main"
 	    UPD_BRANCH_ARCH_MULTILIB="multilib-main"
-	    UPD_BRANCH_OS="holoiso"
+	    UPD_BRANCH_OS="holoiso-next"
     else
 	    UPD_BRANCH_JUPITER="jupiter"
 	    UPD_BRANCH_OS_CORE="holo"
