@@ -8,18 +8,17 @@ CMD_DB_UPDATE=$(sudo pacman -Sy | grep -o silent)
 ${CMD_DB_UPDATE}
 sleep 1
 # Define update variables only after DB update, to make sure queries are going to be made properly.
-CMD_HOLOISO_CHECK_FOR_UPDATES=$(pacman -Qu | grep -e holoiso-main -e win600 -e gamescope -e holoiso-updateclient -e nvidia -e mesa -e vulkan -e linux-holoiso -e linux-neptune)
-CMD_HOLOISO_CHECK_FOR_NVGPU_UPDATES=$(pacman -Qu | grep -e nvidia)
-CMD_IS_SNAPSHOT_UPDATE=$(pacman -Qu | grep -e holoiso-main)
-CMD_HOLOISO_CHECK_FOR_KERNEL_UPDATES=$(pacman -Qu | grep -e linux-holoiso -e linux-neptune)
-CMD_HOLOISO_CHECK_FOR_MESA_UPDATES_AMD=$(pacman -Qu | grep -e vulkan-radeon -e lib32-vulkan-radeon)
-CMD_HOLOISO_CHECK_FOR_MESA_UPDATES_INTEL=$(pacman -Qu | grep -e vulkan-intel -e lib32-vulkan-intel)
-CMD_HOLOISO_DEPRECATE_NEPTUNE=$(pacman -Q | grep -e linux-neptune-dri)
-CMD_HOLOISO_CHECK_GRUB_UPDATES=$(pacman -Qu | grep -e grub)
-CMD_HOLOISO_CHECK_WIN600_XPAD=$(pacman -Qu | grep -e win600)
+CMD_HOLOISO_CHECK_FOR_UPDATES=$(pacman -Qu holoiso-main $(pacman -Si holoiso-main | grep Depends | cut -d ':' -f 2 | sed 's/jupiter-hw-support//g'))
+CMD_IS_SNAPSHOT_UPDATE=$(pacman -Qu holoiso-main)
+CMD_HOLOISO_UPDATELIST=$(pacman -Qqu holoiso-main $(pacman -Si holoiso-main | grep Depends | cut -d ':' -f 2 | sed 's/jupiter-hw-support//g'))
+CMD_HOLOISO_CHECK_FOR_KERNEL_UPDATES=$(pacman -Qu linux-holoiso linux-neptune)
+CMD_HOLOISO_DEPRECATE_NEPTUNE=$(pacman -Q linux-neptune-dri)
+CMD_HOLOISO_CHECK_GRUB_UPDATES=$(pacman -Qu grub)
+CMD_HOLOISO_CHECK_WIN600_XPAD=$(pacman -Qu win600-xpad-dkms)
 IS_LARGE_UPDATE=$(pacman -Qqu | wc -l)
-IS_NVIDIA=$(echo $(lspci | grep VGA | cut -d ':' -f 3) | grep NVIDIA)
 CMD_CHECK_BETA_BRANCH=$(cat /etc/holoiso-branch)
+info() { echo >&2 "$*"; }
+die() { info "!! $*"; exit 1; }
 
 check_download(){
 	if [ $1 != 0 ]; then
@@ -32,20 +31,16 @@ check_download(){
 # Check for available OS updates. Make sure to only check for snapshot updates
 updatecheck() {
     if [ -n "${CMD_HOLOISO_CHECK_FOR_UPDATES}" ]; then
-        echo "Update(s) available:"
+        info "Update available"
         echo "$(pacman -Si holoiso-main | grep Description | cut -d ":" -f 2)"
+	if [ -n "${CMD_HOLOISO_UPDATELIST}" ]; then
+		echo ", following packages will be updated: ${CMD_HOLOISO_UPDATELIST}"
+	fi
 		if [ "${IS_LARGE_UPDATE}" -ge "100" ]; then
 			echo " | "
 			touch /tmp/large_arch_upd
 			echo "${IS_LARGE_UPDATE} packages ready for update. Arch Linux base update detected"
 		fi
-        touch /tmp/steamos-updatepersist-sentinel
-        exit 0
-    elif [ -n "${CMD_HOLOISO_CHECK_FOR_MESA_UPDATES_AMD}" ] || [ -n "${CMD_HOLOISO_CHECK_FOR_NVGPU_UPDATES}" ] || [ -n "${CMD_HOLOISO_CHECK_FOR_MESA_UPDATES_INTEL}" ]; then
-    	echo " GPU driver update(s) available:"
-        echo "${CMD_HOLOISO_CHECK_FOR_MESA_UPDATES_AMD}"
-	    echo "${CMD_HOLOISO_CHECK_FOR_MESA_UPDATES_INTEL}"
-	    echo "${CMD_HOLOISO_CHECK_FOR_NVGPU_UPDATES}"
         touch /tmp/steamos-updatepersist-sentinel
         exit 0
     elif [ -n "${CMD_HOLOISO_CHECK_WIN600_XPAD}" ]; then
@@ -64,7 +59,7 @@ updatecheck() {
         touch /tmp/steamos-updatepersist-sentinel
         exit 0
     else
-        echo "System up to date."
+        info "No update available"
         exit 7
     fi
 }
@@ -93,7 +88,50 @@ checkkernelupd() {
 
 # Check for manifest related stuff
 checkaddmanifest() {
-    sudo holoiso-manifest-updater
+UPD_IS_WIN600=$(cat /sys/devices/virtual/dmi/id/product_name | grep Win600)
+
+# Check if controller update is installed
+if [ -n "${UPD_IS_WIN600}" ]; then
+    IS_CONTROLLER_INSTALLED=$(pacman -Q | grep win600-xpad-dkms)
+    if [ -n "${IS_CONTROLLER_INSTALLED}" ]; then
+        sudo pacman -Sy
+        IS_CONTROLLER_REQ_TO_UPD=$(pacman -Qu | grep win600-xpad-dkms)
+            if [ -n "${IS_CONTROLLER_REQ_TO_UPD}" ]; then
+                sudo pacman -S --noconfirm --disable-download-timeout win600-xpad-dkms
+            else
+                echo "Controller drivers are up to date."
+            fi
+    else
+        echo "Device is Win600. But controller drivers are missing."
+        sudo pacman -S --noconfirm --disable-download-timeout win600-xpad-dkms
+    fi
+else
+    echo "Controller driver is not required and device isn't Anbernic Win600. Skipping"
+fi
+
+# Remove other unrequired apps
+REMOVED_APPS_RESIDE=$(pacman -Q | grep -e $(curl -s https://raw.githubusercontent.com/theVakhovskeIsTaken/holoiso-manifests/main/delete.txt | sed 's/ / -e /g'))
+if [ -n "${REMOVED_APPS_RESIDE}" ]; then
+    sudo pacman -Rdd --noconfirm $(curl -s https://raw.githubusercontent.com/theVakhovskeIsTaken/holoiso-manifests/main/delete.txt)
+else
+    echo "No need for removing apps now."
+fi
+
+# Install manifest apps
+REQ_INSTALLED_APPS=$(pacman -Q | grep -e $(curl -s https://raw.githubusercontent.com/theVakhovskeIsTaken/holoiso-manifests/main/install | sed 's/ / -e /g'))
+if [ -n "${REQ_INSTALLED_APPS}" ]; then
+    echo "Apps are installed. Checking for updates."
+    REQ_INSTALLED_APPS_UPDATE=$(pacman -Qu | grep -e $(curl -s https://raw.githubusercontent.com/theVakhovskeIsTaken/holoiso-manifests/main/install | sed 's/ / -e /g'))
+    if [ -n "${REQ_INSTALLED_APPS_UPDATE}" ]; then
+        sudo pacman -S --noconfirm --disable-download-timeout $(curl -s https://raw.githubusercontent.com/theVakhovskeIsTaken/holoiso-manifests/main/install)
+        echo "Manifest update complete. Done"
+    else
+        echo "Manifest apps up to date."
+    fi
+else
+    echo "Installing manifest apps..."
+    sudo pacman -S --noconfirm --disable-download-timeout $(curl -s https://raw.githubusercontent.com/theVakhovskeIsTaken/holoiso-manifests/main/install)
+fi
 }
 
 # Check for GRUB updates.
@@ -119,50 +157,14 @@ checkosupd() {
     if [ -n "${CMD_IS_SNAPSHOT_UPDATE}" ]; then
         echo "Snapshot update is available"
         sudo pacman -S --noconfirm --needed --disable-download-timeout holoiso-main
-	sudo pacman -S --noconfirm --needed --disable-download-timeout $(pacman -Si holoiso-main | grep Depends | cut -d ':' -f 2 | sed 's/jupiter-hw-support//g')
-        sudo holoiso-grub-update
-	sudo pacman -Sy
+	if [ -n "${CMD_HOLOISO_UPDATELIST}" ]; then
+		sudo pacman -S --noconfirm --needed --disable-download-timeout $(pacman -Qqu holoiso-main $(pacman -Si holoiso-main | grep Depends | cut -d ':' -f 2 | sed 's/jupiter-hw-support//g'))
+        	sudo holoiso-grub-update
+		sudo pacman -Su
+	fi
     else
         echo "OS snapshot up to date"
     fi
-}
-
-# Check for MESA and vulkan updates.
-checkmesaupd() {
-    # Check AMD updates first
-    if [ -n "${CMD_HOLOISO_CHECK_FOR_MESA_UPDATES_AMD}" ]; then
-        echo "AMD MESA and Vulkan update available, updating..."
-        sudo pacman -S --noconfirm --needed --disable-download-timeout mesa lib32-mesa vulkan-radeon lib32-vulkan-radeon ${UPD_BRANCH_OS}/gamescope
-        check_download $? "installing mesa updates"
-    else
-        echo "AMD MESA update not required or not detected, trying to update Intel MESA"
-    fi
-    # Check Intel updates afterwards if not required.
-    if [ -n "${CMD_HOLOISO_CHECK_FOR_MESA_UPDATES_INTEL}" ]; then
-        echo "Intel MESA and Vulkan update available, updating..."
-        sudo pacman -S --noconfirm --needed --disable-download-timeout mesa lib32-mesa ${UPD_BRANCH_OS}/vulkan-intel ${UPD_BRANCH_OS}/lib32-vulkan-intel ${UPD_BRANCH_OS}/gamescope
-        check_download $? "installing mesa updates"
-    else
-        echo "Intel MESA update not required or not detected, MESA update not required, skipping entirely"
-    fi
-}
-
-# We do not want to overwrite GPU drivers by old Syyu command, update GPU drivers as if it would be a regular package installation
-checkgpuupd() {
-if [ -n "${IS_NVIDIA}" ]; then
-    if [ -n "${CMD_HOLOISO_CHECK_FOR_NVGPU_UPDATES}" ]; then
-        echo "NVIDIA GPU Driver update available, updating..."
-        sudo pacman -S --noconfirm --needed --disable-download-timeout ${UPD_BRANCH_OS}/nvidia-dkms ${UPD_BRANCH_OS}/opencl-nvidia ${UPD_BRANCH_OS}/nvidia-utils ${UPD_BRANCH_OS}/lib32-nvidia-utils
-        check_download $? "installing nvidia updates"
-        sudo depmod -a $(ls /lib/modules)
-        sudo mkinitcpio -P
-        sudo grub-mkconfig -o /boot/grub/grub.cfg
-    else
-        echo "NVIDIA GPU Driver update not required, skipping."
-    fi
-else
-    echo "No NVIDIA GPU, skipping update."
-fi
 }
 
 # Check for sentinel. Sentinel detected = Update time!
@@ -200,10 +202,8 @@ if [[ -e "$STEAMOS_UPDATE_SENTINEL" ]]; then
     checkkernelupd
     percentage=30%
     echo $percentage
-    checkgpuupd
     percentage=40%
     echo $percentage
-    checkmesaupd
     percentage=50%
     echo $percentage
     checkaddmanifest
@@ -238,20 +238,6 @@ if [[ -e "$STEAMOS_UPDATE_SENTINEL" ]]; then
     sleep 1
     echo "Update complete. Restart your device to finish."
 fi
-
-
-# if [[ "${DESKTOP_SESSION}" == "plasma" ]]; then
-#        echo "HoloISO Updater Beta 1\nCurrent version: ${VERSION_LIST_PRE}\nChecking for updates..."
-#fi
-#CMD_HOLO_UPDATE=$(sudo pacman -Syyu --noconfirm --needed --ignore=linux-firmware --ignore=grub --ignore=linux --overwrite="*" --quiet | grep nothing)
-#VERSION_LIST=$(cat /etc/os-release | grep VARIANT_ID | cut -d '"' -f 2)
-#if [[ "${CMD_HOLO_UPDATE}" == " there is nothing to do" ]]; then
-#    echo "Your system is up to date."
-#    echo "Current version: ${VERSION_LIST_PRE}"
-#    exit 7
-#else
-#    echo "Update complete to version ${VERSION_LIST}. Please restart your device to apply changes."
-#fi
 
 if [ -n "$1" ]; then
     case "$1" in
