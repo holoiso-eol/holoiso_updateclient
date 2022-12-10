@@ -253,22 +253,12 @@ fi
 if [ -n "$1" ]; then
     case "$1" in
     check)
-    	if [ -f "/etc/holoiso-oobe" ]; then
-		echo "Fresh installation, ignoring"
-		exit 7
-	else	
-		general
-		updatecheck
-	fi
+	general
+	updatecheck
         ;;
     '')
-	if [ -f "/etc/holoiso-oobe" ]; then
-		echo "Fresh installation, ignoring"
-		exit 7
-	else	
-		general
-		updatenow
-	fi
+	general
+	updatenow
         ;;
     esac
     shift
