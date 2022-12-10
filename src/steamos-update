@@ -1,5 +1,15 @@
 #!/bin/zsh
 
+if [ "$USER" == "liveuser" ]; then
+	echo "Updates are not supported on installation media."
+fi
+
+if [ -f "/etc/holoiso-oobe" ]; then
+	echo "Fresh installation, ignoring"
+	sudo rm /etc/holoiso-oobe
+	exit 7
+fi
+
 UPD_APP_MANIFEST=$(curl -s http://dl.thevakhovske.pw/manifest/updateapps.txt)
 VERSION_LIST_CURR=$(cat /etc/os-release | grep VARIANT_ID | cut -d '"' -f 2)
 CMD_DB_UPDATE=$(sudo pacman -Sy | grep -o silent)
@@ -73,7 +83,6 @@ checkkernelupd() {
 	sleep 1
         sudo pacman -S --noconfirm --needed --disable-download-timeout linux-holoiso linux-holoiso-headers linux-neptune linux-neptune-headers
         check_download $? "installing neptune-dri replacement"
-        sudo mkinitcpio -P
         sudo grub-mkconfig -o /boot/grub/grub.cfg
     fi
     # Check for kernel updates
@@ -171,7 +180,7 @@ checkosupd() {
 export STEAMOS_UPDATE_SENTINEL="/tmp/steamos-updatepersist-sentinel"
 export LARGE_UPD_DETECTED="/tmp/large_arch_upd"
 if [[ -e "$STEAMOS_UPDATE_SENTINEL" ]]; then
-  rm -f "$STEAMOS_UPDATE_SENTINEL"
+  sudo rm -f "$STEAMOS_UPDATE_SENTINEL"
     sleep .1
     percentage=10%
     echo $percentage
@@ -217,6 +226,7 @@ if [[ -e "$STEAMOS_UPDATE_SENTINEL" ]]; then
 		sudo pacman -S mesa lib32-mesa vulkan-radeon vulkan-intel lib32-vulkan-radeon lib32-vulkan-intel
 		check_download $? "installing OS updates"
     fi
+    sudo pacman -Su
     percentage=70%
     echo $percentage
     percentage=75%
@@ -242,10 +252,16 @@ fi
 if [ -n "$1" ]; then
     case "$1" in
     check)
-        updatecheck
+    	if [ -f "/etc/holoiso-oobe" ]; then
+		echo "Fresh installation, ignoring"
+		sudo rm /etc/holoiso-oobe
+		exit 7
+	else
+		updatecheck
+	fi
         ;;
     '')
-        updatenow
+	updatenow
         ;;
     esac
     shift
