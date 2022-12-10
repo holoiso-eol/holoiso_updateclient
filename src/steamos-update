@@ -4,7 +4,7 @@ if [[ "$USER" == "liveuser" ]]; then
 	echo "Updates are not supported on installation media."
 fi
 
-if [ -n "$(cat /home/deck/.steam/registry.vdf | grep AutoLoginUser)" ]; then
+if [ -n "$(cat ~/.steam/registry.vdf | grep AutoLoginUser)" ]; then
 	touch /tmp/updator-active
 elif
 	echo "OOBE State detected. Exiting"
