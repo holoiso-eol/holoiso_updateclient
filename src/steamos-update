@@ -4,8 +4,11 @@ if [[ "$USER" == "liveuser" ]]; then
 	echo "Updates are not supported on installation media."
 fi
 
+if [ -z "$(cat ~/.steam/registry.vdf | grep AutoLoginUser)" ]; then
+    exit 7
+fi
+
 general(){
-if [ -n "$(cat ~/.steam/registry.vdf | grep AutoLoginUser)" ]; then
 	UPD_APP_MANIFEST=$(curl -s http://dl.thevakhovske.pw/manifest/updateapps.txt)
 	VERSION_LIST_CURR=$(cat /etc/os-release | grep VARIANT_ID | cut -d '"' -f 2)
 	CMD_DB_UPDATE=$(sudo pacman -Sy | grep -o silent)
@@ -25,10 +28,6 @@ if [ -n "$(cat ~/.steam/registry.vdf | grep AutoLoginUser)" ]; then
 	CMD_CHECK_BETA_BRANCH=$(cat /etc/holoiso-branch)
 	info() { echo >&2 "$*"; }
 	die() { info "!! $*"; exit 1; }
-else
-	echo "OOBE State detected. Exiting"
-	exit 7
-fi
 }
 
 check_download(){
@@ -185,6 +184,7 @@ if [[ -e "$STEAMOS_UPDATE_SENTINEL" ]]; then
     sleep .1
     percentage=10%
     echo $percentage
+    checkgrubupd
     checkosupd
     check_download $? "installing holoiso snapshot"
     percentage=20%
@@ -240,7 +240,6 @@ if [[ -e "$STEAMOS_UPDATE_SENTINEL" ]]; then
     touch /tmp/upd-stg1-done
     percentage=90%
     echo $percentage
-    checkgrubupd
     sleep 1
     touch /tmp/upd-stg3-done
     percentage=100%
