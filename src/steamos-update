@@ -171,8 +171,8 @@ checkosupd() {
         sudo pacman -S --noconfirm --needed --disable-download-timeout holoiso-main
 	if [ -n "${CMD_HOLOISO_UPDATELIST}" ]; then
 		sudo pacman -S --noconfirm --needed --disable-download-timeout $(pacman -Qqu holoiso-main $(pacman -Si holoiso-main | grep Depends | cut -d ':' -f 2 | sed 's/jupiter-hw-support//g'))
-        	sudo holoiso-grub-update
-		sudo pacman -Su
+		sudo pacman -Su --noconfirm
+		sudo holoiso-grub-update
 	fi
     else
         echo "OS snapshot up to date"
