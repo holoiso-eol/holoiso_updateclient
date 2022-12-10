@@ -271,7 +271,7 @@ if [ -n "$1" ]; then
 	else	
 		general
 		updatenow
-	f
+	fi
         ;;
     esac
     shift
