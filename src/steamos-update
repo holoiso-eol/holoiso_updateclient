@@ -28,7 +28,6 @@ fi
         exit 0
     fi
 
-general(){
 	UPD_APP_MANIFEST=$(curl -s http://dl.thevakhovske.pw/manifest/updateapps.txt)
 	VERSION_LIST_CURR=$(cat /etc/os-release | grep VARIANT_ID | cut -d '"' -f 2)
 	CMD_DB_UPDATE=$(sudo pacman -Sy | grep -o silent)
@@ -47,8 +46,6 @@ general(){
 	IS_LARGE_UPDATE=$(pacman -Qqu | wc -l)
 	CMD_CHECK_BETA_BRANCH=$(cat /etc/holoiso-branch)
 	info() { echo >&2 "$*"; }
-	die() { info "!! $*"; exit 1; }
-}
 
 check_download(){
 	if [ $1 != 0 ]; then
@@ -271,11 +268,9 @@ fi
 if [ -n "$1" ]; then
     case "$1" in
     check)
-	    general
 	    updatecheck
         ;;
     '')
-	    general
 	    updatenow
         ;;
     esac
