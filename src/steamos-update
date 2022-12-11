@@ -186,14 +186,15 @@ checkosupd() {
     if [ -n "${CMD_IS_SNAPSHOT_UPDATE}" ]; then
         echo "Snapshot update is available"
         sudo pacman -S --noconfirm --needed --disable-download-timeout holoiso-main
-	if [ -n "${CMD_HOLOISO_UPDATELIST}" ]; then
+    else
+        echo "OS snapshot up to date"
+    fi
+    	if [ -n "${CMD_HOLOISO_UPDATELIST}" ]; then
+		echo "Dependency update available"
 		sudo pacman -S --noconfirm --needed --disable-download-timeout $(pacman -Qqu holoiso-main $(pacman -Si holoiso-main | grep Depends | cut -d ':' -f 2 | sed 's/jupiter-hw-support//g'))
 		sudo pacman -Su --noconfirm --needed --disable-download-timeout
 		sudo holoiso-grub-update
 	fi
-    else
-        echo "OS snapshot up to date"
-    fi
 }
 
 # Check for sentinel. Sentinel detected = Update time!
