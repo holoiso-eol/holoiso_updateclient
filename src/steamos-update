@@ -4,9 +4,29 @@ if [[ "$USER" == "liveuser" ]]; then
 	echo "Updates are not supported on installation media."
 fi
 
-if [ -z "$(cat ~/.steam/registry.vdf | grep AutoLoginUser)" ]; then
-    exit 7
-fi
+    # Make full package update on OOBE
+    OOBE_SENTINEL="/etc/holoiso-oobe"
+    if [[ -e "${OOBE_SENTINEL}" ]]; then
+        sudo rm ${OOBE_SENTINEL}
+        echo "OOBE Pipeline detected"
+        percentage=10%
+        echo $percentage
+        sudo pacman -Sy
+        percentage=20%
+        echo $percentage
+        sudo pacman -S --noconfirm --needed --disable-download-timeout holoiso-main
+        percentage=30%
+        echo $percentage
+        sudo pacman -S --noconfirm --needed --disable-download-timeout $(pacman -Qqu holoiso-main $(pacman -Si holoiso-main | grep Depends | cut -d ':' -f 2 | sed 's/jupiter-hw-support//g'))
+        percentage=80%
+        echo $percentage
+        percentage=90%
+        echo $percentage
+        sudo holoiso-grub-update
+        percentage=100%
+        echo $percentage
+        exit 0
+    fi
 
 general(){
 	UPD_APP_MANIFEST=$(curl -s http://dl.thevakhovske.pw/manifest/updateapps.txt)
@@ -168,7 +188,7 @@ checkosupd() {
         sudo pacman -S --noconfirm --needed --disable-download-timeout holoiso-main
 	if [ -n "${CMD_HOLOISO_UPDATELIST}" ]; then
 		sudo pacman -S --noconfirm --needed --disable-download-timeout $(pacman -Qqu holoiso-main $(pacman -Si holoiso-main | grep Depends | cut -d ':' -f 2 | sed 's/jupiter-hw-support//g'))
-		sudo pacman -Su --noconfirm
+		sudo pacman -Su --noconfirm --needed --disable-download-timeout
 		sudo holoiso-grub-update
 	fi
     else
@@ -224,10 +244,9 @@ if [[ -e "$STEAMOS_UPDATE_SENTINEL" ]]; then
 		sudo pacman -S --noconfirm archlinux-keyring
 		sudo pacman -S --noconfirm icu lib32-icu freerdp ffmpeg harfbuzz-icu libphonenumber raptor chromaprint
 		sudo pacman -Syu --noconfirm --needed --disable-download-timeout --ignore=grub --ignore=linux
-		sudo pacman -S mesa lib32-mesa vulkan-radeon vulkan-intel lib32-vulkan-radeon lib32-vulkan-intel
+		sudo pacman -S --noconfirm --needed --disable-download-timeout mesa lib32-mesa vulkan-radeon vulkan-intel lib32-vulkan-radeon lib32-vulkan-intel
 		check_download $? "installing OS updates"
     fi
-    sudo pacman -Su
     percentage=70%
     echo $percentage
     percentage=75%
@@ -235,7 +254,6 @@ if [[ -e "$STEAMOS_UPDATE_SENTINEL" ]]; then
     percentage=80%
     echo $percentage
     touch /tmp/u-still-here-huh
-    holoiso-manifest-updater
     sleep 1
     touch /tmp/upd-stg1-done
     percentage=90%
@@ -252,12 +270,12 @@ fi
 if [ -n "$1" ]; then
     case "$1" in
     check)
-	general
-	updatecheck
+	    general
+	    updatecheck
         ;;
     '')
-	general
-	updatenow
+	    general
+	    updatenow
         ;;
     esac
     shift
