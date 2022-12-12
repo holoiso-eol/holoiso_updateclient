@@ -253,6 +253,12 @@ if [[ -e "$STEAMOS_UPDATE_SENTINEL" ]]; then
     percentage=60%
     echo $percentage
     echo "HoloISO Update complete, checking OS updates..."
+    if [[ -e "$LARGE_UPD_DETECTED" ]]; then
+		sudo pacman -Sy
+		sudo pacman -Su --overwrite="*" --disable-download-timeout --noconfirm holoiso-main
+		sudo holoiso-grub-update
+		check_download $? "installing OS updates"
+    fi
     percentage=70%
     echo $percentage
     percentage=75%
