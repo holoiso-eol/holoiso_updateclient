@@ -211,7 +211,7 @@ if [[ -e "$STEAMOS_UPDATE_SENTINEL" ]]; then
     ### And i can check it everytime it updates to make sure it updates the real shit!
     IS_BETA=$(cat /etc/pacman.conf | grep -e "jupiter-main")
     if [ -n "${IS_BETA}" ]; then
-        echo "holy shit dude touch grass your system is broken and if you fixed it you probably didn't come outside for last 10 years"
+        echo "Beta channel changes detected. Assigning update packages"
 	    UPD_BRANCH_JUPITER="jupiter-main"
 	    UPD_BRANCH_OS_CORE="holo-main"
 	    UPD_BRANCH_ARCH_CORE="core-main"
@@ -226,6 +226,15 @@ if [[ -e "$STEAMOS_UPDATE_SENTINEL" ]]; then
 	    UPD_BRANCH_ARCH_MULTILIB="multilib"
 	    UPD_BRANCH_OS="holoiso-stable"
     fi
+    if [[ -e "$LARGE_UPD_DETECTED" ]]; then
+		sudo pacman -S --noconfirm archlinux-keyring
+		sudo pacman -S --noconfirm icu lib32-icu freerdp ffmpeg harfbuzz-icu libphonenumber raptor chromaprint
+		sudo pacman -S --noconfirm linux-neptune-60 linux-neptune-60-headers
+		sudo pacman -Su --overwrite="*" --noconfirm --needed --disable-download-timeout --ignore=grub --ignore=linux
+		sudo pacman -S  --overwrite="*" --noconfirm --needed --disable-download-timeout holoiso-main
+		sudo pacman -S --noconfirm --needed --disable-download-timeout ${UPD_BRANCH_JUPITER}/mesa ${UPD_BRANCH_JUPITER}/lib32-mesa ${UPD_BRANCH_JUPITER}/vulkan-radeon vulkan-intel ${UPD_BRANCH_JUPITER}/lib32-vulkan-radeon lib32-vulkan-intel
+		check_download $? "installing OS updates"
+    fi
     echo $percentage
     checkkernelupd
     percentage=30%
@@ -238,13 +247,6 @@ if [[ -e "$STEAMOS_UPDATE_SENTINEL" ]]; then
     percentage=60%
     echo $percentage
     echo "HoloISO Update complete, checking OS updates..."
-    if [[ -e "$LARGE_UPD_DETECTED" ]]; then
-		sudo pacman -S --noconfirm archlinux-keyring
-		sudo pacman -S --noconfirm icu lib32-icu freerdp ffmpeg harfbuzz-icu libphonenumber raptor chromaprint
-		sudo pacman -Syu --noconfirm --needed --disable-download-timeout --ignore=grub --ignore=linux
-		sudo pacman -S --noconfirm --needed --disable-download-timeout mesa lib32-mesa vulkan-radeon vulkan-intel lib32-vulkan-radeon lib32-vulkan-intel
-		check_download $? "installing OS updates"
-    fi
     percentage=70%
     echo $percentage
     percentage=75%
