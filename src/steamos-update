@@ -192,6 +192,7 @@ checkosupd() {
 		sudo pacman -Su --noconfirm --needed --disable-download-timeout
 		sudo holoiso-grub-update
 	fi
+	check_download $? "installing holoiso snapshot"
 }
 
 # Check for sentinel. Sentinel detected = Update time!
