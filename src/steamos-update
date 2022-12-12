@@ -183,11 +183,13 @@ checkosupd() {
     if [ -n "${CMD_IS_SNAPSHOT_UPDATE}" ]; then
         echo "Snapshot update is available"
         sudo pacman -S --noconfirm --needed --disable-download-timeout holoiso-main
+	sudo pacman -Sy
     else
         echo "OS snapshot up to date"
     fi
     	if [ -n "${CMD_HOLOISO_UPDATELIST}" ]; then
 		echo "Dependency update available"
+		sudo pacman -Sy
 		sudo pacman -S --noconfirm --needed --disable-download-timeout $(pacman -Qqu holoiso-main $(pacman -Si holoiso-main | grep Depends | cut -d ':' -f 2 | sed 's/jupiter-hw-support//g'))
 		sudo pacman -Su --noconfirm --needed --disable-download-timeout
 		sudo holoiso-grub-update
@@ -227,6 +229,7 @@ if [[ -e "$STEAMOS_UPDATE_SENTINEL" ]]; then
 	    UPD_BRANCH_ARCH_MULTILIB="multilib"
 	    UPD_BRANCH_OS="holoiso-stable"
     fi
+    sudo pacman -Sy
     if [[ -e "$LARGE_UPD_DETECTED" ]]; then
 		sudo pacman -S --noconfirm archlinux-keyring
 		sudo pacman -S --noconfirm icu lib32-icu freerdp ffmpeg harfbuzz-icu libphonenumber raptor chromaprint
