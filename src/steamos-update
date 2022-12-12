@@ -233,6 +233,7 @@ if [[ -e "$STEAMOS_UPDATE_SENTINEL" ]]; then
 		sudo pacman -Su --overwrite="*" --noconfirm --needed --disable-download-timeout --ignore=grub --ignore=linux
 		sudo pacman -S  --overwrite="*" --noconfirm --needed --disable-download-timeout holoiso-main
 		sudo pacman -S --noconfirm --needed --disable-download-timeout ${UPD_BRANCH_JUPITER}/mesa ${UPD_BRANCH_JUPITER}/lib32-mesa ${UPD_BRANCH_JUPITER}/vulkan-radeon vulkan-intel ${UPD_BRANCH_JUPITER}/lib32-vulkan-radeon lib32-vulkan-intel
+		sudo holoiso-grub-update
 		check_download $? "installing OS updates"
     fi
     echo $percentage
