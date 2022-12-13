@@ -36,9 +36,9 @@ fi
 	${CMD_DB_UPDATE}
 	sleep 1
 	# Define update variables only after DB update, to make sure queries are going to be made properly.
-	CMD_HOLOISO_CHECK_FOR_UPDATES=$(pacman -Qu holoiso-main $(pacman -Si holoiso-main | grep Depends | cut -d ':' -f 2 | sed 's/jupiter-hw-support//g'))
+	CMD_HOLOISO_CHECK_FOR_UPDATES=$(pacman -Qu holoiso-main linux-holoiso linux-holoiso-headers linux-neptune linux-neptune-headers linux-neptune-60 linux-neptune-60-headers $(pacman -Si holoiso-main | grep Depends | cut -d ':' -f 2 | sed 's/jupiter-hw-support//g'))
 	CMD_IS_SNAPSHOT_UPDATE=$(pacman -Qu holoiso-main)
-	CMD_HOLOISO_UPDATELIST=$(pacman -Qqu holoiso-main $(pacman -Si holoiso-main | grep Depends | cut -d ':' -f 2 | sed 's/jupiter-hw-support//g'))
+	CMD_HOLOISO_UPDATELIST=$(pacman -Qqu holoiso-main linux-holoiso linux-holoiso-headers linux-neptune linux-neptune-headers linux-neptune-60 linux-neptune-60-headers $(pacman -Si holoiso-main | grep Depends | cut -d ':' -f 2 | sed 's/jupiter-hw-support//g'))
 	CMD_HOLOISO_CHECK_FOR_KERNEL_UPDATES=$(pacman -Qqu linux-holoiso linux-holoiso-headers linux-neptune linux-neptune-headers linux-neptune-60 linux-neptune-60-headers)
 	CMD_HOLOISO_DEPRECATE_NEPTUNE=$(pacman -Q linux-neptune-dri)
 	CMD_HOLOISO_CHECK_GRUB_UPDATES=$(pacman -Qu grub)
