@@ -8,6 +8,8 @@ then
     exec pkexec --disable-internal-agent "$0" "$@"
 fi
 
+info() { echo >&2 "$*"; }
+
 # Check for available OS updates.
 updatecheck() {
     # Update pacman dbs
