@@ -1,273 +1,43 @@
-#!/bin/zsh
+#!/bin/bash
+if [[ -e "/etc/holoiso-oobe" ]]; then
+     exit 7
+else
 
-if [[ "$USER" == "liveuser" ]]; then
-	echo "Updates are not supported on installation media."
+if [[ $EUID -ne 0 ]];
+then
+    exec pkexec --disable-internal-agent "$0" "$@"
 fi
 
-    # Make full package update on OOBE
-    OOBE_SENTINEL="/etc/holoiso-oobe"
-    if [[ -e "${OOBE_SENTINEL}" ]]; then
-        sudo rm ${OOBE_SENTINEL}
-        echo "OOBE Pipeline detected"
-        percentage=10%
-        echo $percentage
-        sudo pacman -Sy
-        percentage=20%
-        echo $percentage
-        sudo pacman -S --noconfirm --needed --disable-download-timeout holoiso-main
-        percentage=30%
-        echo $percentage
-        sudo pacman -S --noconfirm --needed --disable-download-timeout $(pacman -Qqu holoiso-main $(pacman -Si holoiso-main | grep Depends | cut -d ':' -f 2 | sed 's/jupiter-hw-support//g'))
-        percentage=80%
-        echo $percentage
-        percentage=90%
-        echo $percentage
-        sudo holoiso-grub-update
-        percentage=100%
-        echo $percentage
-        exit 0
-    fi
-
-	UPD_APP_MANIFEST=$(curl -s http://dl.thevakhovske.pw/manifest/updateapps.txt)
-	VERSION_LIST_CURR=$(cat /etc/os-release | grep VARIANT_ID | cut -d '"' -f 2)
-	CMD_DB_UPDATE=$(sudo pacman -Sy | grep -o silent)
-
-	# Update pacman DB before starting any update.
-	${CMD_DB_UPDATE}
-	sleep 1
-	# Define update variables only after DB update, to make sure queries are going to be made properly.
-	CMD_HOLOISO_CHECK_FOR_UPDATES=$(pacman -Qu holoiso-main linux-holoiso linux-holoiso-headers linux-neptune linux-neptune-headers linux-neptune-60 linux-neptune-60-headers $(pacman -Si holoiso-main | grep Depends | cut -d ':' -f 2 | sed 's/jupiter-hw-support//g'))
-	CMD_IS_SNAPSHOT_UPDATE=$(pacman -Qu holoiso-main)
-	CMD_HOLOISO_UPDATELIST=$(pacman -Qqu holoiso-main linux-holoiso linux-holoiso-headers linux-neptune linux-neptune-headers linux-neptune-60 linux-neptune-60-headers $(pacman -Si holoiso-main | grep Depends | cut -d ':' -f 2 | sed 's/jupiter-hw-support//g'))
-	CMD_HOLOISO_CHECK_FOR_KERNEL_UPDATES=$(pacman -Qqu linux-holoiso linux-holoiso-headers linux-neptune linux-neptune-headers linux-neptune-60 linux-neptune-60-headers)
-	CMD_HOLOISO_DEPRECATE_NEPTUNE=$(pacman -Q linux-neptune-dri)
-	CMD_HOLOISO_CHECK_GRUB_UPDATES=$(pacman -Qu grub)
-	CMD_HOLOISO_CHECK_WIN600_XPAD=$(pacman -Qu win600-xpad-dkms)
-	IS_LARGE_UPDATE=$(pacman -Qqu | wc -l)
-	CMD_CHECK_BETA_BRANCH=$(cat /etc/holoiso-branch)
-	info() { echo >&2 "$*"; }
-
-check_download(){
-	if [ $1 != 0 ]; then
-		echo "\nError: Something went wrong when $2.\nPlease make sure you have a stable internet connection!\n"
-        sudo rm /tmp/steamos-updatepersist-sentinel
-		exit 1
-	fi
-}
-
-# Check for available OS updates. Make sure to only check for snapshot updates
+# Check for available OS updates.
 updatecheck() {
-    if [ -n "${CMD_HOLOISO_CHECK_FOR_UPDATES}" ]; then
-        info "Update available"
-        echo "$(pacman -Si holoiso-main | grep Description | cut -d ":" -f 2)"
-	if [ -n "${CMD_HOLOISO_UPDATELIST}" ]; then
-		echo "| following packages will be updated: ${CMD_HOLOISO_UPDATELIST}"
-	fi
-		if [ "${IS_LARGE_UPDATE}" -ge "100" ]; then
-			echo " | "
-			touch /tmp/large_arch_upd
-			echo "${IS_LARGE_UPDATE} packages ready for update. Arch Linux base update detected"
-		fi
-        touch /tmp/steamos-updatepersist-sentinel
-        exit 0
-    elif [ -n "${CMD_HOLOISO_CHECK_WIN600_XPAD}" ]; then
-    	echo " Anbernic Win600 gamepad driver update available:"
-        echo "${CMD_HOLOISO_CHECK_WIN600_XPAD}"
-        touch /tmp/steamos-updatepersist-sentinel
-        exit 0
-    elif [ -n "${CMD_HOLOISO_CHECK_FOR_KERNEL_UPDATES}" ]; then
-    	echo " Kernel update(s) available:"
-        echo "${CMD_HOLOISO_CHECK_FOR_KERNEL_UPDATES}"
-        touch /tmp/steamos-updatepersist-sentinel
-        exit 0
-    elif [ -n "${CMD_HOLOISO_CHECK_GRUB_UPDATES}" ]; then
-    	echo " Bootloader update available:"
-        echo "${CMD_HOLOISO_CHECK_GRUB_UPDATES}"
-        touch /tmp/steamos-updatepersist-sentinel
-        exit 0
-    else
-        info "No update available"
-        exit 7
-    fi
-}
-
-# Check for kernel updates. Little workaround to make it work on HoloISO
-checkkernelupd() {
-    # Force get rid of linux-neptune-dri
-    # Check for kernel updates
-    if [ -n "${CMD_HOLOISO_CHECK_FOR_KERNEL_UPDATES}" ]; then
-        echo "Kernel update available, updating..."
-        sudo pacman -S --noconfirm --needed --disable-download-timeout $(pacman -Qqu linux-holoiso linux-holoiso-headers linux-neptune linux-neptune-headers linux-neptune-60 linux-neptune-60-headers)
-        check_download $? "installing kernel updates"
-    else
-        echo "Kernel update not required, skipping."
-    fi
-}
-
-# Check for manifest related stuff
-checkaddmanifest() {
-UPD_IS_WIN600=$(cat /sys/devices/virtual/dmi/id/product_name | grep Win600)
-
-# Check if controller update is installed
-if [ -n "${UPD_IS_WIN600}" ]; then
-    IS_CONTROLLER_INSTALLED=$(pacman -Q | grep win600-xpad-dkms)
-    if [ -n "${IS_CONTROLLER_INSTALLED}" ]; then
-        sudo pacman -Sy
-        IS_CONTROLLER_REQ_TO_UPD=$(pacman -Qu | grep win600-xpad-dkms)
-            if [ -n "${IS_CONTROLLER_REQ_TO_UPD}" ]; then
-                sudo pacman -S --noconfirm --disable-download-timeout win600-xpad-dkms
-            else
-                echo "Controller drivers are up to date."
+    # Update pacman dbs
+    pacman -Sy
+        # Here we check for package reqs
+        HOLOISO_MAIN_SNAPSHOT_HAS_UPDATE=$(pacman -Qu holoiso-main)
+        HOLOISO_DEPENDENCY_UPDATE_LIST=$(pacman -Qqu $(pacman -Si holoiso-main | grep Depends | cut -d ':' -f 2 | sed 's/jupiter-hw-support//g'))
+        IS_LARGE_UPDATE=$(pacman -Qqu | wc -l)
+        if [ -n "${HOLOISO_MAIN_SNAPSHOT_HAS_UPDATE}" ]; then
+            info "Update available"
+            echo "$(pacman -Si holoiso-main | grep Description | cut -d ":" -f 2)"
+            if [ -n "${HOLOISO_DEPENDENCY_UPDATE_LIST}" ]; then
+		        echo "| following packages will be updated: ${HOLOISO_DEPENDENCY_UPDATE_LIST}"
             fi
-    else
-        echo "Device is Win600. But controller drivers are missing."
-        sudo pacman -S --noconfirm --disable-download-timeout win600-xpad-dkms
-    fi
-else
-    echo "Controller driver is not required and device isn't Anbernic Win600. Skipping"
-fi
-
-# Remove other unrequired apps
-REMOVED_APPS_RESIDE=$(pacman -Q | grep -e $(curl -s https://raw.githubusercontent.com/theVakhovskeIsTaken/holoiso-manifests/main/delete.txt | sed 's/ / -e /g'))
-if [ -n "${REMOVED_APPS_RESIDE}" ]; then
-    sudo pacman -Rdd --noconfirm $(curl -s https://raw.githubusercontent.com/theVakhovskeIsTaken/holoiso-manifests/main/delete.txt)
-else
-    echo "No need for removing apps now."
-fi
-
-# Install manifest apps
-REQ_INSTALLED_APPS=$(pacman -Q | grep -e $(curl -s https://raw.githubusercontent.com/theVakhovskeIsTaken/holoiso-manifests/main/install | sed 's/ / -e /g'))
-if [ -n "${REQ_INSTALLED_APPS}" ]; then
-    echo "Apps are installed. Checking for updates."
-    REQ_INSTALLED_APPS_UPDATE=$(pacman -Qu | grep -e $(curl -s https://raw.githubusercontent.com/theVakhovskeIsTaken/holoiso-manifests/main/install | sed 's/ / -e /g'))
-    if [ -n "${REQ_INSTALLED_APPS_UPDATE}" ]; then
-        sudo pacman -S --noconfirm --disable-download-timeout $(curl -s https://raw.githubusercontent.com/theVakhovskeIsTaken/holoiso-manifests/main/install)
-        echo "Manifest update complete. Done"
-    else
-        echo "Manifest apps up to date."
-    fi
-else
-    echo "Installing manifest apps..."
-    sudo pacman -S --noconfirm --disable-download-timeout $(curl -s https://raw.githubusercontent.com/theVakhovskeIsTaken/holoiso-manifests/main/install)
-fi
-}
-
-# Check for GRUB updates.
-checkgrubupd() {
-    if [ -n "${CMD_HOLOISO_CHECK_GRUB_UPDATES}" ]; then
-        echo "GRUB update available, updating..."
-        sudo pacman -S --noconfirm --needed --disable-download-timeout ${UPD_BRANCH_OS}/grub
-	sudo pacman -S --noconfirm --needed --disable-download-timeout $(pacman -Si ${UPD_BRANCH_OS}/grub | grep Depends | cut -d ':' -f 2)
-	GRUB_THEME_INSTALLED=$(pacman -Q | grep -e breeze-grub)
-		if [ -n "${GRUB_THEME_INSTALLED}" ]; then
-			echo "Theme is available. No need for reinstall."
-		else
-			sudo pacman -S --noconfirm --needed --disable-download-timeout breeze-grub
-		fi
-        sudo holoiso-grub-update
-    else
-        echo "GRUB up-to-date"
-    fi
-}
-
-# Make snapshot updates much better
-checkosupd() {
-    if [ -n "${CMD_IS_SNAPSHOT_UPDATE}" ]; then
-        echo "Snapshot update is available"
-        sudo pacman -S --overwrite="*" --noconfirm --needed --disable-download-timeout holoiso-main
-	sudo pacman -Sy
-    else
-        echo "OS snapshot up to date"
-    fi
-    	if [ -n "${CMD_HOLOISO_UPDATELIST}" ]; then
-		echo "Dependency update available"
-		sudo pacman -Sy
-		sudo pacman -S --noconfirm --needed --disable-download-timeout $(pacman -Qqu holoiso-main $(pacman -Si holoiso-main | grep Depends | cut -d ':' -f 2 | sed 's/jupiter-hw-support//g'))
-		sudo pacman -S --overwrite="*" --noconfirm --needed --disable-download-timeout holoiso-main
-		sudo pacman -Su --noconfirm --needed --disable-download-timeout
-		sudo holoiso-grub-update
-	fi
-	check_download $? "installing holoiso snapshot"
+            if [ "${IS_LARGE_UPDATE}" -ge "100" ]; then
+			    echo "and ${IS_LARGE_UPDATE} more packages are ready to update."
+		    fi
+                touch /tmp/steamos-updatepersist-sentinel
+                exit 0
+        else
+            info "No update available"
+            exit 7
+        fi
 }
 
 # Check for sentinel. Sentinel detected = Update time!
 export STEAMOS_UPDATE_SENTINEL="/tmp/steamos-updatepersist-sentinel"
-export LARGE_UPD_DETECTED="/tmp/large_arch_upd"
 if [[ -e "$STEAMOS_UPDATE_SENTINEL" ]]; then
-  sudo rm -f "$STEAMOS_UPDATE_SENTINEL"
-    sleep .1
-    percentage=10%
-    echo $percentage
-    checkgrubupd
-    checkosupd
-    check_download $? "installing holoiso snapshot"
-    percentage=20%
-    ### SO, here's the fix for all of the goddamn issues i might have when we merge back to holoiso
-    ### Basically, i ship pacman.conf each time this fucking shitty package gets updated
-    ### And i can check it everytime it updates to make sure it updates the real shit!
-    IS_BETA=$(cat /etc/pacman.conf | grep -e "jupiter-main")
-    if [ -n "${IS_BETA}" ]; then
-        echo "Beta channel changes detected. Assigning update packages"
-	    UPD_BRANCH_JUPITER="jupiter-main"
-	    UPD_BRANCH_OS_CORE="holo-main"
-	    UPD_BRANCH_ARCH_CORE="core-main"
-	    UPD_BRANCH_ARCH_EXTRA="extra-main"
-	    UPD_BRANCH_ARCH_MULTILIB="multilib-main"
-	    UPD_BRANCH_OS="holoiso-next"
-    else
-	    UPD_BRANCH_JUPITER="jupiter"
-	    UPD_BRANCH_OS_CORE="holo"
-	    UPD_BRANCH_ARCH_CORE="core"
-	    UPD_BRANCH_ARCH_EXTRA="extra"
-	    UPD_BRANCH_ARCH_MULTILIB="multilib"
-	    UPD_BRANCH_OS="holoiso-stable"
-    fi
-    sudo pacman -Sy
-    if [[ -e "$LARGE_UPD_DETECTED" ]]; then
-		sudo pacman -S --noconfirm archlinux-keyring
-		sudo pacman -S --noconfirm icu lib32-icu freerdp ffmpeg harfbuzz-icu libphonenumber raptor chromaprint
-		sudo pacman -S --noconfirm linux-neptune-60 linux-neptune-60-headers
-		sudo pacman -Su --overwrite="*" --noconfirm --needed --disable-download-timeout --ignore=grub --ignore=linux
-		sudo pacman -S  --overwrite="*" --noconfirm --needed --disable-download-timeout holoiso-main
-		sudo pacman -S --noconfirm --needed --disable-download-timeout ${UPD_BRANCH_JUPITER}/mesa ${UPD_BRANCH_JUPITER}/lib32-mesa ${UPD_BRANCH_JUPITER}/vulkan-radeon vulkan-intel ${UPD_BRANCH_JUPITER}/lib32-vulkan-radeon lib32-vulkan-intel
-		sudo holoiso-grub-update
-		check_download $? "installing OS updates"
-    fi
-    echo $percentage
-    checkkernelupd
-    percentage=30%
-    echo $percentage
-    percentage=40%
-    echo $percentage
-    percentage=50%
-    echo $percentage
-    checkaddmanifest
-    percentage=60%
-    echo $percentage
-    echo "HoloISO Update complete, checking OS updates..."
-    if [[ -e "$LARGE_UPD_DETECTED" ]]; then
-		sudo pacman -Sy
-		sudo pacman -Su --overwrite="*" --disable-download-timeout --noconfirm holoiso-main
-		sudo holoiso-grub-update
-		check_download $? "installing OS updates"
-    fi
-    percentage=70%
-    echo $percentage
-    percentage=75%
-    echo $percentage
-    percentage=80%
-    echo $percentage
-    touch /tmp/u-still-here-huh
-    sleep 1
-    touch /tmp/upd-stg1-done
-    percentage=90%
-    echo $percentage
-    sleep 1
-    touch /tmp/upd-stg3-done
-    percentage=100%
-    echo $percentage
-    touch /tmp/upd-stg4-done
-    sleep 1
+    rm -f "$STEAMOS_UPDATE_SENTINEL"
+    pacman -Su --overwrite="*" holoiso-main
     echo "Update complete. Restart your device to finish."
 fi
 
@@ -281,4 +51,5 @@ if [ -n "$1" ]; then
         ;;
     esac
     shift
+fi
 fi
