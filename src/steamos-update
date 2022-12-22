@@ -13,14 +13,14 @@ updatecheck() {
     # Update pacman dbs
     pacman -Sy
         # Here we check for package reqs
-        HOLOISO_MAIN_SNAPSHOT_HAS_UPDATE=$(pacman -Qu holoiso-main)
+        HOLOISO_MAIN_SNAPSHOT_HAS_UPDATE=$(pacman -Qqu)
         HOLOISO_DEPENDENCY_UPDATE_LIST=$(pacman -Qqu $(pacman -Si holoiso-main | grep Depends | cut -d ':' -f 2 | sed 's/jupiter-hw-support//g'))
         IS_LARGE_UPDATE=$(pacman -Qqu | wc -l)
         if [ -n "${HOLOISO_MAIN_SNAPSHOT_HAS_UPDATE}" ]; then
             info "Update available"
             echo "$(pacman -Si holoiso-main | grep Description | cut -d ":" -f 2)"
             if [ -n "${HOLOISO_DEPENDENCY_UPDATE_LIST}" ]; then
-		        echo "| following packages will be updated: ${HOLOISO_DEPENDENCY_UPDATE_LIST}"
+		        echo "| following dependencies will be updated: ${HOLOISO_DEPENDENCY_UPDATE_LIST}"
             fi
             if [ "${IS_LARGE_UPDATE}" -ge "100" ]; then
 			    echo "and ${IS_LARGE_UPDATE} more packages are ready to update."
@@ -37,7 +37,7 @@ updatecheck() {
 export STEAMOS_UPDATE_SENTINEL="/tmp/steamos-updatepersist-sentinel"
 if [[ -e "$STEAMOS_UPDATE_SENTINEL" ]]; then
     rm -f "$STEAMOS_UPDATE_SENTINEL"
-    pacman -Su --overwrite="*" holoiso-main
+    pacman -Su --noconfirm --overwrite="*" holoiso-main
     echo "Update complete. Restart your device to finish."
 fi
 
