@@ -13,7 +13,7 @@ updatecheck() {
     # Update pacman dbs
     pacman -Sy
         # Here we check for package reqs
-        HOLOISO_MAIN_SNAPSHOT_HAS_UPDATE=$(pacman -Qqu)
+        HOLOISO_MAIN_SNAPSHOT_HAS_UPDATE=$(pacman -Qqu holoiso-main $(pacman -Si holoiso-main | grep Depends | cut -d ':' -f 2 | sed 's/jupiter-hw-support//g'))
         HOLOISO_DEPENDENCY_UPDATE_LIST=$(pacman -Qqu $(pacman -Si holoiso-main | grep Depends | cut -d ':' -f 2 | sed 's/jupiter-hw-support//g'))
         IS_LARGE_UPDATE=$(pacman -Qqu | wc -l)
         if [ -n "${HOLOISO_MAIN_SNAPSHOT_HAS_UPDATE}" ]; then
