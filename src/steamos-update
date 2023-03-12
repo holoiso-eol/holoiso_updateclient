@@ -96,14 +96,14 @@ else
         sudo mkdir -p $UPDATEDIR
         for package in "${package_list[@]}"
         do
-            sudo wget -qnc $(pacman -Sp $package) -P $UPDATEDIR
+            sudo wget -qnc $(pacman -Spdd $package) -P $UPDATEDIR
             percentage_var=$((count*100/total))
             percentage=$percentage_var%
             echo "# Updating package: $package ($count of $total) - $percentage complete."
             echo $percentage
             count=$((count+1))
         done
-        sudo pacman -Udd --noconfirm $UPDATEDIR/*
+        yes | sudo pacman -Udd --overwrite="*" --needed $UPDATEDIR/*
         echo "Cleaning up..."
         rm -rf $UPDATEDIR
         echo "Update complete. Restart your device to finish."
