@@ -2,6 +2,7 @@ pkgname=holoiso-updateclient
 pkgver="rel.$(date +%Y%m%d.%H%M)"
 pkgdesc="HoloISO Update Client"
 pkgrel="1"
+depends=('pacutils')
 arch=("x86_64")
 
 package() {
