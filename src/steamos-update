@@ -8,6 +8,10 @@ if [[ -e "/etc/holoiso-oobe" ]]; then
      exit 7
 else
 
+if [[ "$KDE_FULL_SESSION" == "true" ]]; then
+    IS_GUI=1
+fi
+
 # Elevate ourselves or idk
 if [[ $EUID -ne 0 ]];
 then
@@ -18,9 +22,32 @@ fi
 info() { echo >&2 "$*"; }
 BRANCH_LOCAL=$(cat /etc/holoiso-branch)
 
+package_list_gen() {
+    pacman_list=$(pacman -Qu | cut -d " " -f 1 | sed 's/jupiter-hw-support//g')
+    if [[ -n "${pacman_list}" ]]; then
+        dependencies=$(pacinfo ${pacman_list} | grep -i requires | cut -d ' ' -f 8)
+        # Loop through each package and gather dependencies
+        package_list=()
+        for package in $pacman_list
+        do
+            # Add package to list
+            package_list+=($package)
+        done
+        for dependency in $dependencies
+        do
+            if [[ ! " ${package_list[@]} " =~ " ${dependency} " ]]; then
+                    package_list+=($dependency)
+            fi
+        done
+    else
+        info "No update available"
+        exit 7
+    fi
+}
+
 # Check for available OS updates.
 updatecheck() {
-    # Update and add latest pacman config ## PLACEHOLDER ## ##TODO: We're elevated anyway. Can't we just check for config version?##
+    # Update and add latest pacman config 
     wget -q https://raw.githubusercontent.com/theVakhovskeIsTaken/holoiso_install_main/${BRANCH_LOCAL}/src/pacman.conf -O /tmp/cached_pacman.conf
     if [[ -f "/tmp/cached_pacman.conf" ]]; then
         if [[ "$(cat /tmp/cached_pacman.conf | grep CONFIG_VERSION | cut -d "=" -f 2 | sed 's|["'\'']||g')" -ge "$(cat /etc/pacman.conf | grep CONFIG_VERSION | cut -d "=" -f 2 | sed 's|["'\'']||g')" ]]; then
@@ -30,16 +57,11 @@ updatecheck() {
     fi
     # Update pacman dbs
     pacman -Sy | grep -i "quiet"
-        # Here we check for package reqs
-        HOLOISO_MAIN_SNAPSHOT_HAS_UPDATE=$(pacman -Qqu holoiso-main $(pacman -Si holoiso-main | grep Depends | cut -d ':' -f 2 | sed 's/jupiter-hw-support//g'))
-        HOLOISO_DEPENDENCY_UPDATE_LIST=$(pacman -Qqu $(pacman -Si holoiso-main | grep Depends | cut -d ':' -f 2 | sed 's/jupiter-hw-support//g'))
-        IS_LARGE_UPDATE=$(pacman -Qqu | wc -l)
-        if [ -n "${HOLOISO_MAIN_SNAPSHOT_HAS_UPDATE}" ]; then
+        package_list_gen
+        IS_LARGE_UPDATE=${#package_list[@]}
+        if [ -n "${package_list}" ]; then
             info "Update available"
             echo "$(pacman -Si holoiso-main | grep Description | cut -d ":" -f 2)"
-            if [ -n "${HOLOISO_DEPENDENCY_UPDATE_LIST}" ]; then
-		        echo "| following dependencies will be updated: ${HOLOISO_DEPENDENCY_UPDATE_LIST}"
-            fi
             if [ "${IS_LARGE_UPDATE}" -ge "100" ]; then
 			    echo "and ${IS_LARGE_UPDATE} more packages are ready to update."
 		    fi
@@ -51,16 +73,43 @@ updatecheck() {
         fi
 }
 
-## TODO:
-## Check what Steam client actually calls on "Apply update" press
-## What it does now, is what I call a lazy thing, called "I'll run the same thing, but since i wrote the sentinel it'll update anyway!"
-
+## Valve is super genius. Their original updater has a --apply-atomupd and 'now' handle which is used to 
+# start forming an update sequence, but Valve use neither, instead they write a shitty PID sentinel to make updater
+# know that wtf it's doing. So when update button is available, it just runs "/usr/bin/steamos-update".
+# And i'm following the same path right now, so that it doesn't mix up the "check again" sequence for anyone!
 # Check for sentinel. Sentinel detected = Update time!
-export STEAMOS_UPDATE_SENTINEL="/tmp/steamos-updatepersist-sentinel"
-if [[ -e "$STEAMOS_UPDATE_SENTINEL" ]]; then
-    rm -f "$STEAMOS_UPDATE_SENTINEL"
-    pacman -Su --noconfirm --overwrite="*" holoiso-main
-    echo "Update complete. Restart your device to finish."
+if [[ "$1" == "check" ]]; then
+    # We don't want to update if check runs again
+    updatecheck
+else
+    export STEAMOS_UPDATE_SENTINEL="/tmp/steamos-updatepersist-sentinel"
+    export DBLOCK_FILE="/var/lib/pacman/db.lck"
+    if [[ -e "$DBLOCK_FILE" ]]; then
+        rm -f "$DBLOCK_FILE"
+    fi
+    if [[ -e "$STEAMOS_UPDATE_SENTINEL" ]]; then
+        package_list_gen
+        rm -f "$STEAMOS_UPDATE_SENTINEL"
+        count=1
+        total=${#package_list[@]}
+        UPDATEDIR=/var/cache/pacman/pkg/holoiso_upd_$(echo $RANDOM | md5sum | head -c 10; echo;)
+        sudo mkdir -p $UPDATEDIR
+        for package in "${package_list[@]}"
+        do
+            sudo wget -q $(pacman -Sp $package) -P $UPDATEDIR
+            percentage_var=$((count*100/total))
+            percentage=$percentage_var%
+            echo "# Updating package: $package ($count of $total) - $percentage complete."
+            echo $percentage
+            count=$((count+1))
+        done
+        sudo pacman -Udd --noconfirm $(find $UPDATEDIR | grep -v "zst.[1234567890]" | tail -n +2)
+        echo "Cleaning up..."
+        echo "Update complete. Restart your device to finish."
+    else
+        echo "Unable to update: $($STEAMOS_UPDATE_SENTINEL 2>&1) (Did updater set sentinel?)"
+        exit 10
+    fi
 fi
 
 ## To be fixed
