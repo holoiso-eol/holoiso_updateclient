@@ -103,7 +103,7 @@ else
             echo $percentage
             count=$((count+1))
         done
-        yes | sudo pacman -Udd --overwrite="*" --needed $UPDATEDIR/*
+        yes | sudo pacman -Su --overwrite="*" --needed --ignore="filesystem" --ignore="jupiter-hw-support"
         echo "Cleaning up..."
         rm -rf $UPDATEDIR
         echo "Update complete. Restart your device to finish."
