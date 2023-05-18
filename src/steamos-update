@@ -8,6 +8,11 @@ if [[ -e "/etc/holoiso-oobe" ]]; then
      exit 7
 else
 
+if [[ $IS_ROG_ALLY_TESTVERSION ]]; then
+    echo "Disabled for test versions."
+    exit 7
+fi
+
 if [[ "$KDE_FULL_SESSION" == "true" ]]; then
     IS_GUI=1
 fi
