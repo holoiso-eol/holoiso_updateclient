@@ -106,7 +106,7 @@ else
         total=${#package_list[@]}
         UPDATEDIR=/var/cache/pacman/pkg/holoiso_upd_$(echo $RANDOM | md5sum | head -c 10; echo;)
         sudo mkdir -p $UPDATEDIR
-        for package in "${package_list[@]}"
+        for package in "${pkg[@]}"
         do
             sudo wget -qnc $(pacman -Spdd $package) -P $UPDATEDIR
             percentage_var=$((count*100/total))
