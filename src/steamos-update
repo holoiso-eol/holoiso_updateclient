@@ -33,6 +33,7 @@ package_list_gen() {
         dependencies=$(pacinfo ${pacman_list} | grep -i requires | cut -d ' ' -f 8)
         # Loop through each package and gather dependencies
         package_list=()
+	upd_list=()
         for package in $pacman_list
         do
             # Add package to list
@@ -42,6 +43,12 @@ package_list_gen() {
         do
             if [[ ! " ${package_list[@]} " =~ " ${dependency} " ]]; then
                     package_list+=($dependency)
+            fi
+        done
+        for pkg in $package_list
+        do
+            if [[ ! -z $(pacman -Qu ${pkg}) ]]; then
+                    upd_list+=($pkg)
             fi
         done
     else
