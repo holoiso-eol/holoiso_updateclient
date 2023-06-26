@@ -71,8 +71,8 @@ updatecheck() {
     # Update pacman dbs
     pacman -Sy | grep -i "quiet"
         package_list_gen
-        IS_LARGE_UPDATE=${#package_list[@]}
-        if [ -n "${package_list}" ]; then
+        IS_LARGE_UPDATE=${#upd_list[@]}
+        if [ -n "${upd_list}" ]; then
             info "Update available"
             echo "$(pacman -Si holoiso-main | grep Description | cut -d ":" -f 2)"
             if [ "${IS_LARGE_UPDATE}" -ge "100" ]; then
