@@ -58,16 +58,30 @@ pacman_list=$(pacman -Qu | cut -d " " -f 1 | sed 's/jupiter-hw-support//g' | tr 
     fi
 }
 
-# Check for available OS updates.
-updatecheck() {
-    # Update and add latest pacman config ## PLACEHOLDER ## ##TODO: We're elevated anyway. Can't we just check for config version?##
+validate_pacman_conf() {
+    # Update and add latest pacman config
+	if [[ "$1" == "regen"]]; then
+	echo "Validating and regenerating pacman configuration. Please wait."
+	fi
     wget -q https://raw.githubusercontent.com/theVakhovskeIsTaken/holoiso_install_main/${BRANCH_LOCAL}/src/pacman.conf -O /tmp/cached_pacman.conf
+    wget -q https://raw.githubusercontent.com/theVakhovskeIsTaken/holoiso_install_main/${BRANCH_LOCAL}/src/holomirror -O /tmp/holomirror_cached
     if [[ -f "/tmp/cached_pacman.conf" ]]; then
         if [[ "$(cat /tmp/cached_pacman.conf | grep CONFIG_VERSION | cut -d "=" -f 2 | sed 's|["'\'']||g')" -ge "$(cat /etc/pacman.conf | grep CONFIG_VERSION | cut -d "=" -f 2 | sed 's|["'\'']||g')" ]]; then
             rm /etc/pacman.conf
             mv /tmp/cached_pacman.conf /etc/pacman.conf
         fi
     fi
+    if [[ -f "/tmp/holomirror_cached" ]]; then
+        if [[ "$(cat /tmp/holomirror_cached | grep CONFIG_VERSION | cut -d "=" -f 2 | sed 's|["'\'']||g')" -ge "$(cat /etc/pacman.d/holo_mirrorlist | grep CONFIG_VERSION | cut -d "=" -f 2 | sed 's|["'\'']||g')" ]]; then
+            rm /etc/pacman.d/holo_mirrorlist
+            mv /tmp/holomirror_cached /etc/pacman.d/holo_mirrorlist
+        fi
+    fi
+}
+
+# Check for available OS updates.
+updatecheck() {
+    validate_pacman_conf
     # Update pacman dbs
     pacman -Sy | grep -i "quiet"
         package_list_gen
@@ -133,6 +147,9 @@ if [ -n "$1" ]; then
     case "$1" in
     check)
 	    updatecheck
+        ;;
+    regen)
+	    validate_pacman_conf
         ;;
     '')
 	    updatenow
