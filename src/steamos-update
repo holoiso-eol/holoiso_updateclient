@@ -60,9 +60,6 @@ pacman_list=$(pacman -Qu | cut -d " " -f 1 | sed 's/jupiter-hw-support//g' | tr 
 
 validate_pacman_conf() {
     # Update and add latest pacman config
-	if [[ "$1" == "regen"]]; then
-	echo "Validating and regenerating pacman configuration. Please wait."
-	fi
     wget -q https://raw.githubusercontent.com/theVakhovskeIsTaken/holoiso_install_main/${BRANCH_LOCAL}/src/pacman.conf -O /tmp/cached_pacman.conf
     wget -q https://raw.githubusercontent.com/theVakhovskeIsTaken/holoiso_install_main/${BRANCH_LOCAL}/src/holomirror -O /tmp/holomirror_cached
     if [[ -f "/tmp/cached_pacman.conf" ]]; then
@@ -108,6 +105,9 @@ updatecheck() {
 if [[ "$1" == "check" ]]; then
     # We don't want to update if check runs again
     updatecheck
+elif [[ "$1" == "regen" ]]; then
+    echo "Validating and regenerating pacman configuration. Please wait."
+    validate_pacman_conf
 else
     export STEAMOS_UPDATE_SENTINEL="/tmp/steamos-updatepersist-sentinel"
     export DBLOCK_FILE="/var/lib/pacman/db.lck"
