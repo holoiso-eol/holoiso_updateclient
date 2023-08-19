@@ -29,6 +29,33 @@ BRANCH_LOCAL=$(cat /etc/holoiso-branch)
 
 package_list_gen() {
 pacman_list=$(pacman -Qu | cut -d " " -f 1 | sed 's/jupiter-hw-support//g' | tr '\n' ' ')
+    if [[ -n "${pacman_list}" ]]; then
+        dependencies=$(pacinfo ${pacman_list} | grep -i requires | cut -d ' ' -f 8)
+        # Loop through each package and gather dependencies
+        package_list=()
+	    upd_list=()
+        for package in $pacman_list
+        do
+            # Add package to list
+            package_list+=" $package"
+        done
+        for dependency in $dependencies
+        do
+            if [[ ! " ${package_list[@]} " =~ " ${dependency} " ]]; then
+                    package_list+=" $dependency"
+            fi
+        done
+        for pkg in $package_list
+        do
+            if [[ ! -z $(pacman -Qu ${pkg}) ]]; then
+                    upd_list+=" $pkg"
+            fi
+        done
+        upd_list=(`echo ${upd_list}`);
+    else
+        info "No update available"
+        exit 7
+    fi
 }
 
 validate_pacman_conf() {
@@ -51,12 +78,12 @@ validate_pacman_conf() {
 
 # Check for available OS updates.
 updatecheck() {
-    # validate_pacman_conf
+    validate_pacman_conf
     # Update pacman dbs
     pacman -Sy | grep -i "quiet"
         package_list_gen
-        IS_LARGE_UPDATE=${#pacman_list[@]}
-        if [ -n "${pacman_list}" ]; then
+        IS_LARGE_UPDATE=${#upd_list[@]}
+        if [ -n "${upd_list}" ]; then
             info "Update available"
             echo "$(pacman -Si holoiso-main | grep Description | cut -d ":" -f 2)"
             if [ "${IS_LARGE_UPDATE}" -ge "100" ]; then
@@ -88,11 +115,21 @@ else
         rm -f "$DBLOCK_FILE"
     fi
     if [[ -e "$STEAMOS_UPDATE_SENTINEL" ]]; then
-        #package_list_gen
+        package_list_gen
         rm -f "$STEAMOS_UPDATE_SENTINEL"
         count=1
+        total=${#upd_list[@]}
         UPDATEDIR=/var/cache/pacman/pkg/holoiso_upd_$(echo $RANDOM | md5sum | head -c 10; echo;)
         sudo mkdir -p $UPDATEDIR
+        for package in "${upd_list[@]}"
+        do
+            sudo wget -qnc $(pacman -Spdd $package) -P $UPDATEDIR
+            percentage_var=$((count*100/total))
+            percentage=$percentage_var%
+            echo "# Updating package: $package ($count of $total) - $percentage complete."
+            echo $percentage
+            count=$((count+1))
+        done
         yes | sudo pacman -Su --overwrite="*" --needed --ignore="filesystem" --ignore="jupiter-hw-support"
         echo "Cleaning up..."
         rm -rf $UPDATEDIR
