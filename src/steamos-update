@@ -75,7 +75,7 @@ updatecheck() {
 ## What it does now, is what I call a lazy thing, called "I'll run the same thing, but since i wrote the sentinel it'll update anyway!"
 
 # Check for sentinel. Sentinel detected = Update time!
-if [[ "$1" == "check" ]]; then
+if [[ "$1" == "check" ]] || [[ "$1" == "--beta" ]] || [[ "$1" == "-d" ]] || [[ "$1" == "--enable-duplicate-detection" ]] || [[ "$1" == "--supports-duplicate-detection" ]]; then
     # We don't want to update if check runs again
     updatecheck
 elif [[ "$1" == "regen" ]]; then
@@ -108,11 +108,27 @@ fi
 
 if [ -n "$1" ]; then
     case "$1" in
-    check)
+    "check")
 	    updatecheck
         ;;
-    regen)
+    "regen")
 	    validate_pacman_conf
+        ;;
+    "-d")
+        echo "What are you gonna debug? :skullemoji:"
+        updatecheck
+        ;;
+    "--enable-duplicate-detection")
+        echo "will do"
+        updatecheck
+        ;;
+    "--beta")
+        echo "we do not care"
+        updatecheck
+        ;;
+    "--supports-duplicate-detection")
+        info "This script supports the duplicate detection option"
+        exit 0
         ;;
     '')
 	    updatenow
